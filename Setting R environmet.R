@@ -8,4 +8,4 @@ install.packages("raster")
 
 renv::snapshot()
 renv::restore()
-summary(tidyverse)
+
