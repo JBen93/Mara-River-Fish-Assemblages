@@ -1,4 +1,8 @@
 #Labeo victorianus distribution analysis in the Mara River
+# clear everything in memory (of R)
+remove(list=ls())
+
+renv::restore()
 # Load necessary libraries
 library(tidyverse)
 library(readr)
