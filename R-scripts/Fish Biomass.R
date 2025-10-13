@@ -86,17 +86,26 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
                    "\nP = ", format.pval(p_site, digits = 3, eps = 1e-3))
   ) +
   labs(
-    title = "",
-    x = "Site",
-    y = "Biomass (g) = n × mean weight"
+    title = "2021–2022",
+    x = "Sampling Site",
+    y = expression("Biomass (g) = n × mean weight")
   ) +
-  theme_minimal(base_size = 12)
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(
+      size = 14,
+      hjust = 0.5          # Center the title
+    ),
+    axis.text.x = element_text(size = 11),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
 
 # ---- Optional: also show a bar plot for quick comparison ----
 ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
   geom_col(fill = "grey70", color = "black", width = 0.7) +
   labs(
-    title = "",
+    title = "2021-2022",
     x = "Site",
     y = "Biomass (g) = n × mean weight"
   ) +
