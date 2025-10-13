@@ -1,7 +1,7 @@
-####################################################################################
-#Species accumulation curve#################################################################
-# ---- Species Accumulation Curve (Sites M2, M3, M4,M5,M6, M7, M9; 2021–2022) ----
-# ---- Species Accumulation Curve (Sites M2, M3, M4, M5, M6, M7, M9; 2021–2022) ----
+#Species accumulation curves#
+# --------------------------------------------------------------------------------------------
+#Species Accumulation Curve for the current fish data 2021–2022 (Sites M2, M3, M4,M5,M6, M7, M9) 
+# --------------------------------------------------------------------------------------------
 # clear everything in memory (of R)
 remove(list=ls())
 # load the renv package
