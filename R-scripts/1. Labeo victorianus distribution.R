@@ -477,6 +477,7 @@ remove(list = ls())
 library(tidyverse)
 library(readr)
 library(janitor)
+library(stringr)
 
 # Load data
 dat1 <- readr::read_csv(
@@ -504,13 +505,13 @@ df <- dat1 %>%
 biomass_spp_year <- df %>%
   group_by(location_id, fish_species, sampling_year) %>%
   summarise(
-    n_fish        = n(),
+    n_fish        = dplyr::n(),
     mean_weight_g = mean(weight_g, na.rm = TRUE),
     biomass_g     = n_fish * mean_weight_g,
     .groups = "drop"
   )
 
-# (Optional) collapse across years to species totals per site
+# Collapse across years to species totals per site
 biomass_spp_site <- biomass_spp_year %>%
   group_by(location_id, fish_species) %>%
   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop")
@@ -522,66 +523,53 @@ biomass_site <- biomass_spp_site %>%
   mutate(location_id = factor(location_id, levels = paste0("M", 2:9))) %>%
   arrange(location_id)
 
-# For regression: compute mean length per site (across all individuals)
-site_length <- df %>%
-  group_by(location_id) %>%
-  summarise(mean_length_mm = mean(length_mm, na.rm = TRUE), .groups = "drop")
+print(biomass_site)
 
-# Merge biomass and length
-site_stats <- biomass_site %>%
-  left_join(site_length, by = "location_id")
+# ---- Regression: Biomass vs Site Order (M2 -> M9) ----
+site_stats2 <- biomass_site %>%
+  mutate(
+    site_order = as.numeric(stringr::str_remove(as.character(location_id), "^M")),
+    location_id = factor(location_id, levels = paste0("M", 2:9))
+  ) %>%
+  arrange(site_order)
 
-print(site_stats)
+# Fit linear model: biomass ~ site_order
+m_site <- lm(biomass_g ~ site_order, data = site_stats2)
+sm_site <- summary(m_site)
+r2_site <- sm_site$r.squared
+p_site  <- coef(sm_site)[2, 4]
 
-# -----------------------------
-# Plot 1: Bar plot of biomass by site
-# -----------------------------
+# Plot regression with R² and P, x-axis labeled as M2–M9
+ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  scale_x_continuous(
+    breaks = site_stats2$site_order,
+    labels = site_stats2$location_id
+  ) +
+  annotate(
+    "text",
+    x = min(site_stats2$site_order, na.rm = TRUE),
+    y = max(site_stats2$biomass_g, na.rm = TRUE),
+    hjust = 0, vjust = 1,
+    label = paste0("R² = ", round(r2_site, 3),
+                   "\nP = ", format.pval(p_site, digits = 3, eps = 1e-3))
+  ) +
+  labs(
+    title = "Biomass vs Site",
+    x = "Site",
+    y = "Biomass (g) = n × mean weight"
+  ) +
+  theme_minimal(base_size = 12)
+
+# ---- Optional: also show a bar plot for quick comparison ----
 ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
   geom_col(fill = "grey70", color = "black", width = 0.7) +
   labs(
     title = "Fish Biomass by Site (M2–M9; 2021–2022)",
     x = "Site",
-    y = "Biomass (g) = n × mean weight (summed across species & years)"
-  ) +
-  theme_minimal(base_size = 12)
-
-# -----------------------------
-# Plot 2: Regression — Biomass vs Mean Length (per site)
-# -----------------------------
-m <- lm(biomass_g ~ mean_length_mm, data = site_stats)
-sm <- summary(m)
-r2 <- sm$r.squared
-p  <- coef(sm)[2, 4]
-
-ggplot(site_stats, aes(x = mean_length_mm, y = biomass_g)) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", se = TRUE, color = "black") +
-  annotate(
-    "text",
-    x = min(site_stats$mean_length_mm, na.rm = TRUE),
-    y = max(site_stats$biomass_g, na.rm = TRUE),
-    hjust = 0, vjust = 1,
-    label = paste0("R² = ", round(r2, 3), "\nP = ", format.pval(p, digits = 3, eps = 1e-3))
-  ) +
-  labs(
-    title = "Site Biomass vs Mean Fish Length (M2–M9; 2021–2022)",
-    x = "Mean Fish Length (mm)",
     y = "Biomass (g) = n × mean weight"
   ) +
   theme_minimal(base_size = 12)
 
 # -----------------------------
-# (Optional) Year-wise site biomass (stacked or side-by-side)
-# -----------------------------
-# biomass_site_year <- biomass_spp_year %>%
-#   group_by(location_id, sampling_year) %>%
-#   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
-#   mutate(location_id = factor(location_id, levels = paste0("M", 2:9)),
-#          sampling_year = factor(sampling_year))
-#
-# ggplot(biomass_site_year, aes(x = location_id, y = biomass_g, fill = sampling_year)) +
-#   geom_col(position = position_dodge(width = 0.75), width = 0.7, color = "black") +
-#   scale_fill_manual(values = c("2021" = "grey60", "2022" = "grey80"), name = "Year") +
-#   labs(title = "Fish Biomass by Site and Year",
-#        x = "Site", y = "Biomass (g) = n × mean weight") +
-#   theme_minimal(base_size = 12)
