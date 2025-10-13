@@ -1,0 +1,178 @@
+#Fish Biomass in the Mara River, Kenya, during past sampling (2013,2014, 2016) and current sampling (2021-2022)
+# clear everything in memory (of R)
+remove(list=ls())
+# load the renv package
+renv::restore()
+#load libararies 
+library(tidyverse) # for dplyr, ggplot2, tidyr, etc.
+library(readr) # for read_csv
+library(janitor) # for clean_names
+
+# Load data
+dat1 <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+  show_col_types = FALSE
+) %>% 
+  janitor::clean_names()   # standardize: fish_weight, total_length, standard_length, location_id, sampling_year, fish_species, ...
+
+# Filter sites and years
+df <- dat1 %>%
+  filter(location_id %in% paste0("M", 2:9),
+         sampling_year %in% c(2021, 2022)) %>%
+  mutate(
+    # pick a length column (prefer total_length; fall back to standard_length if missing)
+    length_mm = standard_length,
+    weight_g  = fish_weight
+  ) %>%
+  # keep valid numeric observations
+  filter(!is.na(weight_g), !is.na(length_mm), weight_g > 0, length_mm > 0)
+
+# -----------------------------
+# 1) Biomass (sum of weights) per site
+# -----------------------------
+biomass_site <- df %>%
+  group_by(location_id) %>%
+  summarise(biomass_g = sum(weight_g, na.rm = TRUE), .groups = "drop") %>%
+  arrange(location_id)
+
+print(biomass_site)
+
+# (Optional) quick bar plot of biomass by site
+ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
+  geom_col(fill = "grey70", color = "black", width = 0.7) +
+  labs(title = "Fish Biomass by Site (M2–M9; 2021–2022)",
+       x = "Site", y = "Biomass (g)") +
+  theme_minimal(base_size = 12)
+
+# -----------------------------
+# 2) Length–Weight regression (log–log)
+#    log10(weight_g) ~ log10(length_mm)
+# -----------------------------
+df_log <- df %>%
+  mutate(
+    log_w = log10(weight_g),
+    log_l = log10(length_mm)
+  )
+
+lm_log <- lm(log_w ~ log_l, data = df_log)
+summary_lm <- summary(lm_log)
+r2_log <- summary_lm$r.squared
+p_log  <- coef(summary_lm)[2, 4]
+
+# Plot: log–log regression with R² on the panel
+ggplot(df_log, aes(x = log_l, y = log_w)) +
+  geom_point(alpha = 0.6, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  annotate("text",
+           x = min(df_log$log_l, na.rm = TRUE),
+           y = max(df_log$log_w, na.rm = TRUE),
+           hjust = 0, vjust = 1,
+           label = paste0("R² = ", round(r2_log, 3),
+                          "\nP-value = ", format.pval(p_log, digits = 3, eps = 1e-3))) +
+  labs(title = "Length–Weight Relationship (log–log)",
+       x = "log10(Length, mm)", y = "log10(Weight, g)") +
+  theme_minimal(base_size = 12)
+
+############################################################
+# ---- Biomass by species-year, summed to site totals (M2–M9; 2021–2022) ----
+remove(list = ls())
+
+library(tidyverse)
+library(readr)
+library(janitor)
+library(stringr)
+
+# Load data
+dat1 <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+  show_col_types = FALSE
+) %>%
+  janitor::clean_names()   # location_id, sampling_year, fish_species, fish_weight, total_length, standard_length, ...
+
+# Filter + choose length column; keep valid rows
+df <- dat1 %>%
+  filter(location_id %in% paste0("M", 2:9),
+         sampling_year %in% c(2021, 2022)) %>%
+  mutate(
+    length_mm = dplyr::coalesce(total_length, standard_length),
+    weight_g  = fish_weight
+  ) %>%
+  filter(!is.na(fish_species), fish_species != "",
+         !is.na(length_mm), !is.na(weight_g),
+         length_mm > 0, weight_g > 0)
+
+# --------------------------------------------------------------
+# Biomass per species-year (your definition)
+#   biomass_species_year = n_fish(species, site, year) * mean_weight(species, site, year)
+# --------------------------------------------------------------
+biomass_spp_year <- df %>%
+  group_by(location_id, fish_species, sampling_year) %>%
+  summarise(
+    n_fish        = dplyr::n(),
+    mean_weight_g = mean(weight_g, na.rm = TRUE),
+    biomass_g     = n_fish * mean_weight_g,
+    .groups = "drop"
+  )
+
+# Collapse across years to species totals per site
+biomass_spp_site <- biomass_spp_year %>%
+  group_by(location_id, fish_species) %>%
+  summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop")
+
+# Site-level biomass = sum across species (both years combined)
+biomass_site <- biomass_spp_site %>%
+  group_by(location_id) %>%
+  summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
+  mutate(location_id = factor(location_id, levels = paste0("M", 2:9))) %>%
+  arrange(location_id)
+
+print(biomass_site)
+
+# ---- Regression: Biomass vs Site Order (M2 -> M9) ----
+site_stats2 <- biomass_site %>%
+  mutate(
+    site_order = as.numeric(stringr::str_remove(as.character(location_id), "^M")),
+    location_id = factor(location_id, levels = paste0("M", 2:9))
+  ) %>%
+  arrange(site_order)
+
+# Fit linear model: biomass ~ site_order
+m_site <- lm(biomass_g ~ site_order, data = site_stats2)
+sm_site <- summary(m_site)
+r2_site <- sm_site$r.squared
+p_site  <- coef(sm_site)[2, 4]
+
+# Plot regression with R² and P, x-axis labeled as M2–M9
+ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "black") +
+  scale_x_continuous(
+    breaks = site_stats2$site_order,
+    labels = site_stats2$location_id
+  ) +
+  annotate(
+    "text",
+    x = min(site_stats2$site_order, na.rm = TRUE),
+    y = max(site_stats2$biomass_g, na.rm = TRUE),
+    hjust = 0, vjust = 1,
+    label = paste0("R² = ", round(r2_site, 3),
+                   "\nP = ", format.pval(p_site, digits = 3, eps = 1e-3))
+  ) +
+  labs(
+    title = "Biomass vs Site",
+    x = "Site",
+    y = "Biomass (g) = n × mean weight"
+  ) +
+  theme_minimal(base_size = 12)
+
+# ---- Optional: also show a bar plot for quick comparison ----
+ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
+  geom_col(fill = "grey70", color = "black", width = 0.7) +
+  labs(
+    title = "Fish Biomass by Site (M2–M9; 2021–2022)",
+    x = "Site",
+    y = "Biomass (g) = n × mean weight"
+  ) +
+  theme_minimal(base_size = 12)
+
+# -----------------------------
