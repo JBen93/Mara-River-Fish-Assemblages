@@ -5,18 +5,18 @@ remove(list=ls())
 renv::restore()
 #load libararies 
 library(tidyverse) # for dplyr, ggplot2, tidyr, etc.
-library(readr) # for read_csv
+library(vegan) # for read_csv
 library(janitor) # for clean_names
 library(stringr) # for str_remove
 
 # --------------------------------------------------------------
 # Past fish data (2013, 2014, 2016)
-#data URL source
-browseURL <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml?gid=152464398&single=true"
+#data URL source if you need to inspect for the whole dataset
+#browseURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml")
 
 # Load data
 pastfish<- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
   show_col_types = FALSE
 ) %>% 
   janitor::clean_names()   # standardize: fish_weight, total_length, standard_length, location_id, sampling_year, fish_species, ...
@@ -25,9 +25,9 @@ pastfish<- readr::read_csv(
 # Filter + choose length column; keep valid rows
 df <- pastfish %>%
   filter(location_id %in% paste0("M", 2:9),
-         sampling_year %in% c(2021, 2022)) %>%
+         sampling_year %in% c(2013, 2014,2016)) %>%
   mutate(
-    length_mm = dplyr::coalesce(total_length, standard_length),
+    length_mm = dplyr::coalesce(standard_length),
     weight_g  = fish_weight
   ) %>%
   filter(!is.na(fish_species), fish_species != "",
@@ -92,7 +92,7 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
                    "\nP = ", format.pval(p_site, digits = 3, eps = 1e-3))
   ) +
   labs(
-    title = "2021–2022",
+    title = "2013–2016",
     x = "Sampling Site",
     y = expression("Biomass (g) = n × mean weight")
   ) +
@@ -111,7 +111,7 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
 ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
   geom_col(fill = "grey70", color = "black", width = 0.7) +
   labs(
-    title = "2021–2022",
+    title = "2013-2016",
     x = "Site",
     y = expression("Biomass (g) = n × mean weight")
   ) +
@@ -151,7 +151,7 @@ df1 <- currentfish %>%
   filter(location_id %in% paste0("M", 2:9),
          sampling_year %in% c(2021, 2022)) %>%
   mutate(
-    length_mm = dplyr::coalesce(total_length, standard_length),
+    length_mm = dplyr::coalesce(standard_length),
     weight_g  = fish_weight
   ) %>%
   filter(!is.na(fish_species), fish_species != "",
