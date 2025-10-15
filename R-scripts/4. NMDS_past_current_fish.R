@@ -1,4 +1,5 @@
-# Compare the historical and current macroinvertebrate community structure in the Mara River using NMDS, DCA, and PCoA to determine the temporal changes in the community structure.
+# Compare the historical and current fish community structure in the Mara River using NMDS, DCA, and PCoA to determine the temporal changes in the community structure.
+
 # clear everything in memory (of R)
 remove(list=ls())
 
@@ -15,27 +16,26 @@ library(stringr) # for str_remove
 #data URL source if you need to inspect for the whole dataset
 #browseURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml")
 
-# ---- Load past data ----
-pastfish <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
-  show_col_types = FALSE
-) %>%
-  janitor::clean_names()   # -> location_id, sampling_year, fish_species, fish_weight, total_length, standard_length, ...
 
-# Historical macroinvertebrate taxa composition
-####################################################################################################
+
+# Past fish composition
+# --------------------------------------------------------------
 #NMDS analysis 
 #database source 
 
 #browseURL("https://docs.google.com/spreadsheets/d/1WsfU7zcpAl_Kwg9ZxoSvGHgYrnjZlQVs4zzcHqEHkaU/edit?usp=sharing")
 
 #load data filter 2008,2009 and also group by Location_ID, month, year,River_reach and Family
-historicalmacros<-readr::read_csv("https://docs.google.com/spreadsheets/d/1WsfU7zcpAl_Kwg9ZxoSvGHgYrnjZlQVs4zzcHqEHkaU/pub?gid=1151562191&single=true&output=csv") |> 
-  dplyr::filter(year %in% c(2008, 2009))|>
-  tibble::column_to_rownames(var="Sample_ID")# convert distance_m to the row names of the tibble
-head(historicalmacros)
-historicalmacros2<-historicalmacros %>% select(-c(Location_ID, month, year, Reach)) #remove the columns that are not needed for the analysis
-head(historicalmacros2)
+# ---- Load past data ----
+pastfish <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
+  show_col_types = FALSE
+) %>%
+  janitor::clean_names()   # -> location_id, sampling_year, fish_species, fish_weight, total_length, standard_length, ...
+head(pastfish)
+
+pastfish2<-historicalmacros %>% select(-c(Location_ID, month, year, Reach)) #remove the columns that are not needed for the analysis
+head(pastfish2)
 
 #PerMANOVA test to determine if the Location_ID, month, year, and River_reach are significant factors in explaining the variation in the macroinvertebrate community structure.
 set.seed(123) #set seed for reproducibility
