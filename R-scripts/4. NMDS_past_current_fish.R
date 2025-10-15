@@ -23,6 +23,9 @@ library(stringr) # for str_remove
 
 #load data filter 2008,2009 and also group by Location_ID, month, year,River_reach and Family
 # ---- Load past data ----
+#set working directory
+setwd("~/Desktop/Git hub/Mara-River-Fish-Assemblages")
+file <- "/mnt/data/Historical fish.csv"   # <- replace if needed
 pastfish <- readr::read_csv(
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
   show_col_types = FALSE
@@ -30,7 +33,7 @@ pastfish <- readr::read_csv(
   janitor::clean_names()   # -> location_id, sampling_year, fish_species, fish_weight, total_length, standard_length, ...
 head(pastfish)
 
-pastfish2<-historicalmacros %>% select(-c(Location_ID, month, year, Reach)) #remove the columns that are not needed for the analysis
+pastfish2<-pastfish %>% select(-c(Location_ID, month, year, Reach)) #remove the columns that are not needed for the analysis
 head(pastfish2)
 
 #PerMANOVA test to determine if the Location_ID, month, year, and River_reach are significant factors in explaining the variation in the macroinvertebrate community structure.
