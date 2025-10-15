@@ -13,16 +13,12 @@ library(janitor) # for clean_names
 library(stringr) # for str_remove
 
 # Past fish data (2013, 2014, 2016)
-#data URL source if you need to inspect for the whole dataset
-#browseURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml")
-
-
-
+# --------------------------------------------------------------
 # Past fish composition
 # --------------------------------------------------------------
-#NMDS analysis 
+#NMDS analysis of past fish data
 #database source 
-
+#data URL source if you need to inspect for the whole dataset
 #browseURL("https://docs.google.com/spreadsheets/d/1WsfU7zcpAl_Kwg9ZxoSvGHgYrnjZlQVs4zzcHqEHkaU/edit?usp=sharing")
 
 #load data filter 2008,2009 and also group by Location_ID, month, year,River_reach and Family
@@ -74,7 +70,7 @@ histodata.scores$Reach<-(historicalmacros$Reach) # create a column of
 head(histodata.scores)  #look at the data
 
 
-#Plot NMDS for the current macroinvertebrate community structure
+#Plot NMDS for the past fish community structure
 
 ggplot(histodata.scores, aes(x = NMDS1, y = NMDS2, col = Reach)) + 
   geom_point() +
