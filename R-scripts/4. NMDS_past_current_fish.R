@@ -1,88 +1,121 @@
 # Compare the historical and current fish community structure in the Mara River using NMDS, DCA, and PCoA to determine the temporal changes in the community structure.
+# =====================================================================
+# PERMANOVA + NMDS for changes in fish community
+# =====================================================================
 
-# clear everything in memory (of R)
-remove(list=ls())
+# =====================================================================
+# PERMANOVA + NMDS for changes in fish community
+# =====================================================================
+remove(list = ls())
+renv::restore()  # uncomment if you use renv
 
-renv::restore()
-
-library(vegan) 
-library(psych) 
 library(tidyverse)
+library(readr)
+library(janitor)
+library(stringr)
+library(vegan)
 library(ggpubr)
-library(janitor) # for clean_names
-library(stringr) # for str_remove
 
-# Past fish data (2013, 2014, 2016)
-# --------------------------------------------------------------
-# Past fish composition
-# --------------------------------------------------------------
-#NMDS analysis of past fish data
-#database source 
-#data URL source if you need to inspect for the whole dataset
-#browseURL("https://docs.google.com/spreadsheets/d/1WsfU7zcpAl_Kwg9ZxoSvGHgYrnjZlQVs4zzcHqEHkaU/edit?usp=sharing")
-
-#load data filter 2008,2009 and also group by Location_ID, month, year,River_reach and Family
-# ---- Load past data ----
-#set working directory
-setwd("~/Desktop/Git hub/Mara-River-Fish-Assemblages")
-file <- "/mnt/data/Historical fish.csv"   # <- replace if needed
-pastfish <- readr::read_csv(
+# -----------------------------
+# 1) Load LONG data and prepare
+# -----------------------------
+fish_long <- readr::read_csv(
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
-  janitor::clean_names()   # -> location_id, sampling_year, fish_species, fish_weight, total_length, standard_length, ...
-head(pastfish)
+  clean_names() %>%
+  mutate(
+    fish_species   = str_squish(fish_species),
+    # be robust if your file sometimes calls it `reach`
+    river_reach    = coalesce(river_reach),
+    abundance      = 1
+  ) %>%
+  # keep essential fields
+  filter(!is.na(location_id), !is.na(sampling_year), !is.na(sampling_month), !is.na(fish_species))
 
-pastfish2<-pastfish %>% select(-c(Location_ID, month, year, Reach)) #remove the columns that are not needed for the analysis
-head(pastfish2)
+# -----------------------------
+# 2) Summarize and LONG -> WIDE
+# -----------------------------
+# Define sampling unit = site × year × month
+fish_sum <- fish_long %>%
+  group_by(location_id, river_reach, sampling_year, sampling_month, fish_species) %>%
+  summarise(total_abundance = sum(abundance), .groups = "drop")
 
-#PerMANOVA test to determine if the Location_ID, month, year, and River_reach are significant factors in explaining the variation in the macroinvertebrate community structure.
-set.seed(123) #set seed for reproducibility
-permmacros <- adonis2(historicalmacros2 ~ Location_ID + month + year + Reach, 
-                      data = historicalmacros, 
-                      method = "euclidean", permutations = 999,
-                      by = "margin")
-permmacros
+fish_wide <- fish_sum %>%
+  pivot_wider(
+    names_from  = fish_species,
+    values_from = total_abundance,
+    values_fill = 0
+  ) %>%
+  # Create a unit_id that will be the row id
+  mutate(unit_id = paste(location_id, sampling_year, sampling_month, sep = "_"))
 
-#the PerMANOVA test for the historical data shows that the Location_ID, month, year, and River_reach are not significant factors in explaining the variation in the macroinvertebrate community structure.
+# -----------------------------
+# 3) Community matrix & metadata
+# -----------------------------
+# Community matrix (species only), rows = unit_id
+comm <- fish_wide %>%
+  select(-location_id, -river_reach, -sampling_year, -sampling_month, -unit_id)
 
-#plot the NMDS ordination of the historical macroinvertebrate community structure
-histomacros<-vegdist(historicalmacros2, "bray") #we use bray curtis distance matrix since it's count data
-histomacros
+rownames(comm) <- fish_wide$unit_id
 
-#You are going to use the metaMDS function in the vegan package.
-#K =2 because we are interested in only two dimension (which is common for NMDS)
-#Trymax=100 because we have a small data set
-nmdshisto<-metaMDS(histomacros,k=2, trace=T, trymax=100)
-nmdshisto
+# Drop rows with all zeros (if any)
+#comm <- comm[rowSums(comm) > 0, , drop = FALSE]
 
-stressplot(nmdshisto) #plot the stress plot
-#What do the stress value and the fit (R2) of the monotonic regression tell you about the NMDS plot?
-#The stress value is  0.092  which implies fairly good fit. The stress value is a measure of how well the data are represented in the NMDS plot.
-#The closer the stress value is to 0, the better the representation.
-#The R2 value is 0.992, which is also very good. The R2 value is a measure of how well the data are represented in the NMDS plot.
-#The closer the R2 value is to 1, the better the representation.
+# Matching metadata in the same row order as `comm`
+meta <- fish_wide %>%
+  select(location_id, river_reach, sampling_year, sampling_month, unit_id) %>%
+  filter(unit_id %in% rownames(comm)) %>%
+  arrange(match(unit_id, rownames(comm))) %>%
+  mutate(
+    river_reach    = factor(replace_na(river_reach, "Unknown")),
+    sampling_year  = factor(sampling_year),
+    sampling_month = factor(sampling_month)
+  )
 
-#First, we need to create a grouping variable for the historical groups. #We will use the ca package to do this. Identify the river reach, month, year and site as groups: #River reach as a grouping variable
-#First, we need to extract the site scores from the historical NMDS object.
-#We will use the scores function in the vegan package to do this.
-#We will also convert the site scores to a data frame.
-histodata.scores <- as.data.frame(scores(nmdshisto)) #Using the scores function from vegan to extract the site scores and convert to a data.frame
-histodata.scores$sites <- rownames(historicalmacros) # create a column of River reach from the original data frame macros
-histodata.scores$Reach<-(historicalmacros$Reach) # create a column of 
-head(histodata.scores)  #look at the data
+stopifnot(identical(meta$unit_id, rownames(comm)))
 
+# -----------------------------
+# 4) Distance & dispersion test
+# -----------------------------
+set.seed(123)
+dist_bray <- vegdist(comm, method = "bray")
 
-#Plot NMDS for the past fish community structure
+# Check homogeneity of dispersion (by sampling_year here; test others as needed)
+bd_year   <- betadisper(dist_bray, meta$sampling_year)
+disp_test <- permutest(bd_year, permutations = 999)
+print(disp_test)  # if significant, interpret PERMANOVA with caution
 
-ggplot(histodata.scores, aes(x = NMDS1, y = NMDS2, col = Reach)) + 
-  geom_point() +
-  stat_ellipse(linetype = "dashed") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  xlim(-2.5, 2.5) +
-  ylim(-2, 3) +
-  labs() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  annotate("text", x = 2, y = 3, label = paste("Stress = ", round(nmdshisto$stress, 3)))
+# ---------------
+# 5) PERMANOVA
+# ---------------
+# IMPORTANT: use `data = meta` (same rows as `dist_bray`) and refer to meta columns in the formula
+perm <- adonis2(
+  dist_bray ~ sampling_year + sampling_month + river_reach,
+  data = meta,
+  permutations = 999,
+  by = "margin",           # marginal (type II) tests
+  method = "bray"
+)
+print(perm)
+
+# -------------------------------------
+# 6) NMDS (optional) — visualize groups
+# -------------------------------------
+set.seed(123)
+nmds <- metaMDS(comm, distance = "bray", k = 2, trymax = 100, autotransform = FALSE)
+cat("NMDS stress:", nmds$stress, "\n")
+
+nmds_scores <- scores(nmds, display = "sites") %>% as.data.frame()
+nmds_scores$unit_id <- rownames(nmds_scores)
+nmds_df <- nmds_scores %>% left_join(meta, by = "unit_id")
+
+p_nmds <- ggplot(nmds_df, aes(NMDS1, NMDS2, color = sampling_year, shape = river_reach)) +
+  geom_point(size = 2.6, alpha = 0.9) +
+  stat_ellipse(aes(group = sampling_year), linetype = "dashed", linewidth = 0.5, alpha = 0.6) +
+  labs(title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
+       color = "Year", shape = "Reach") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = 0.5))
+print(p_nmds)
 
