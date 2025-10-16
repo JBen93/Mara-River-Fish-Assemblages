@@ -242,7 +242,6 @@ ggplot() +
 # Clean workspace
 remove(list = ls())
 
-
 # Load libraries
 library(tidyverse)
 library(vegan)
@@ -251,19 +250,22 @@ library(readr)
 library(ggpubr)
 library(ggplot2)
 
-# ---------------------------------------------------------------------
-# 1. Load and Prepare Data
-# ---------------------------------------------------------------------
+#load data
+# Load and filter data for sites M1–M9 and years 2021–2022
 fish_long <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
-  clean_names() %>%
+  janitor::clean_names() %>%
   mutate(
-    fish_species = str_squish(fish_species),
+    fish_species = stringr::str_squish(fish_species),
     abundance = 1
   ) %>%
-  filter(!is.na(location_id), !is.na(sampling_year), !is.na(fish_species))
+  filter(
+    location_id %in% paste0("M", 1:9),         # keep only M1 to M9
+    sampling_year %in% c(2021, 2022),          # keep only years 2021 and 2022
+    !is.na(fish_species)                       # ensure species info is not missing
+  )
 
 # ---------------------------------------------------------------------
 # 2. Summarize and Convert from LONG → WIDE
@@ -327,60 +329,35 @@ print(perm)
 # ---------------------------------------------------------------------
 # 5. NMDS Ordination
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# 5. NMDS Ordination — Ellipses by River Reach
+# ---------------------------------------------------------------------
 set.seed(123)
 nmds <- metaMDS(comm, distance = "bray", k = 2, trymax = 100)
 
+# Extract NMDS site scores and join metadata
 scores_nmds <- scores(nmds, display = "sites") %>%
   as.data.frame() %>%
   tibble::rownames_to_column("unit_id")
 
-nmds_df <- inner_join(scores_nmds, meta_aligned, by = "unit_id")
+nmds_df <- inner_join(scores_nmds, meta_aligned, by = "unit_id") %>%
+  mutate(
+    river_reach = factor(river_reach, levels = c("Upstream", "Midstream", "Downstream"))
+  )
 
-# Plot NMDS
-ggplot(nmds_df, aes(NMDS1, NMDS2, color = sampling_year, shape = river_reach)) +
+# NMDS plot with ellipses around river reach groups
+ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
   geom_point(size = 3, alpha = 0.9) +
   stat_ellipse(
-    aes(group = sampling_year),
+    aes(group = river_reach),   # 👈 ellipse by reach
     linetype = "dashed",
-    linewidth = 0.6,
-    alpha = 0.5,
-    na.rm = TRUE,
-    show.legend = FALSE
+    linewidth = 0.8,
+    alpha = 0.6,
+    na.rm = TRUE
   ) +
   labs(
     title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
-    color = "Year",
-    shape = "Reach"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5))
-# ---------------------------------------------------------------------
-# 6. PCoA Ordination (with ellipses)
-# ---------------------------------------------------------------------
-
-# Compute Bray–Curtis distance and PCoA
-dist_bray <- vegan::vegdist(comm, method = "bray")
-pcoa_res <- cmdscale(dist_bray, eig = TRUE, k = 2)
-
-# Combine ordination axes with metadata
-pcoa_df <- data.frame(
-  Axis1 = pcoa_res$points[, 1],
-  Axis2 = pcoa_res$points[, 2],
-  meta_aligned
-)
-
-# Plot PCoA with ellipses grouped by sampling_year
-library(ggplot2)
-
-ggplot(pcoa_df, aes(Axis1, Axis2, color = sampling_year, shape = river_reach)) +
-  geom_point(size = 3, alpha = 0.9) +
-  stat_ellipse(aes(group = sampling_year),
-               linetype = "dashed", linewidth = 0.6, alpha = 0.6) +
-  labs(
-    title = "PCoA (Bray–Curtis Distance)",
-    x = paste0("Axis 1 (", round(pcoa_res$eig[1] / sum(pcoa_res$eig) * 100, 1), "%)"),
-    y = paste0("Axis 2 (", round(pcoa_res$eig[2] / sum(pcoa_res$eig) * 100, 1), "%)"),
-    color = "Sampling Year",
+    color = "River Reach",
     shape = "River Reach"
   ) +
   theme_minimal(base_size = 13) +
@@ -388,6 +365,28 @@ ggplot(pcoa_df, aes(Axis1, Axis2, color = sampling_year, shape = river_reach)) +
     plot.title = element_text(hjust = 0.5),
     legend.position = "right"
   )
+#more tight ellipses
+ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
+  geom_point(size = 3, alpha = 0.9) +
+  stat_ellipse(
+    aes(group = river_reach),
+    type = "norm",      # use covariance ellipse
+    level = 0.68,       # ~1 SD; try 0.50–0.75 if you want smaller/larger
+    linetype = "dashed",
+    linewidth = 0.8,
+    alpha = 0.6,
+    na.rm = TRUE
+  ) +
+  labs(
+    title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
+    color = "River Reach",
+    shape = "River Reach"
+  ) +
+  coord_equal() +        # prevents ellipse distortion
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+###########################################################################
 
 # ---------------------------------------------------------------------
 # 7. DCA Ordination — Sites (black) and Species (red)
