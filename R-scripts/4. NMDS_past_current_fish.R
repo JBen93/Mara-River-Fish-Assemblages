@@ -83,7 +83,7 @@ print(disp_test)
 
 # PERMANOVA test
 perm <- adonis2(
-  dist_bray ~ sampling_year + sampling_month + river_reach,
+  dist_bray ~ sampling_year + river_reach,
   data = meta_aligned,
   permutations = 999,
   by = "margin"
@@ -120,44 +120,92 @@ ggplot(nmds_df, aes(NMDS1, NMDS2, color = sampling_year, shape = river_reach)) +
   ) +
   theme_minimal(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5))
+# ---------------------------------------------------------------------
+# 6. PCoA Ordination (with ellipses)
+# ---------------------------------------------------------------------
 
-# ---------------------------------------------------------------------
-# 6. PCoA Ordination
-# ---------------------------------------------------------------------
+# Compute Bray–Curtis distance and PCoA
+dist_bray <- vegan::vegdist(comm, method = "bray")
 pcoa_res <- cmdscale(dist_bray, eig = TRUE, k = 2)
+
+# Combine ordination axes with metadata
 pcoa_df <- data.frame(
   Axis1 = pcoa_res$points[, 1],
   Axis2 = pcoa_res$points[, 2],
   meta_aligned
 )
 
+# Plot PCoA with ellipses grouped by sampling_year
+library(ggplot2)
+
 ggplot(pcoa_df, aes(Axis1, Axis2, color = sampling_year, shape = river_reach)) +
   geom_point(size = 3, alpha = 0.9) +
+  stat_ellipse(aes(group = sampling_year),
+               linetype = "dashed", linewidth = 0.6, alpha = 0.6) +
   labs(
     title = "PCoA (Bray–Curtis Distance)",
-    x = "Axis 1",
-    y = "Axis 2"
+    x = paste0("Axis 1 (", round(pcoa_res$eig[1] / sum(pcoa_res$eig) * 100, 1), "%)"),
+    y = paste0("Axis 2 (", round(pcoa_res$eig[2] / sum(pcoa_res$eig) * 100, 1), "%)"),
+    color = "Sampling Year",
+    shape = "River Reach"
   ) +
   theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
 
 # ---------------------------------------------------------------------
-# 7. DCA (Detrended Correspondence Analysis)
+# 7. DCA Ordination — Sites (black) and Species (red)
 # ---------------------------------------------------------------------
-dca_res <- decorana(comm)
 
-dca_scores <- scores(dca_res, display = "sites") %>%
-  as.data.frame() %>%
+# Run DCA
+dca_res <- vegan::decorana(comm)
+
+# Extract site and species scores
+site_scores <- as.data.frame(scores(dca_res, display = "sites")) %>%
   tibble::rownames_to_column("unit_id")
 
-dca_df <- inner_join(dca_scores, meta_aligned, by = "unit_id")
+species_scores <- as.data.frame(scores(dca_res, display = "species")) %>%
+  tibble::rownames_to_column("fish_species")
 
-ggplot(dca_df, aes(DCA1, DCA2, color = sampling_year, shape = river_reach)) +
-  geom_point(size = 3, alpha = 0.9) +
+# Combine site scores with metadata
+dca_df <- inner_join(site_scores, meta_aligned, by = "unit_id")
+
+# Create DCA biplot with both sites and species
+ggplot() +
+  # --- Sites (sampling units) ---
+  geom_point(
+    data = dca_df,
+    aes(x = DCA1, y = DCA2, shape = river_reach, color = sampling_year),
+    size = 3,
+    alpha = 0.9
+  ) +
+  geom_text(
+    data = dca_df,
+    aes(x = DCA1, y = DCA2, label = location_id),
+    color = "black", size = 3.5, vjust = -0.8, fontface = "plain"
+  ) +
+  
+  # --- Species (taxa) ---
+  geom_text(
+    data = species_scores,
+    aes(x = DCA1, y = DCA2, label = fish_species),
+    color = "red", size = 3, fontface = "italic"
+  ) +
+  
+  # --- Labels and Theme ---
   labs(
-    title = "DCA — Temporal Variation in Fish Assemblages",
-    x = "Axis 1",
-    y = "Axis 2"
+    title = "DCA",
+    x = "DCA Axis 1",
+    y = "DCA Axis 2",
+    color = "Year",
+    shape = "River Reach"
   ) +
   theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    legend.position = "right",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 11)
+  )
