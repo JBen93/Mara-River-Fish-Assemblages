@@ -172,29 +172,51 @@ species_scores <- as.data.frame(scores(dca_res, display = "species")) %>%
 # Combine site scores with metadata
 dca_df <- inner_join(site_scores, meta_aligned, by = "unit_id")
 
-# Create DCA biplot with both sites and species
+# --- compute padded limits from both sites and species ---
+x_all <- c(dca_df$DCA1, species_scores$DCA1)
+y_all <- c(dca_df$DCA2, species_scores$DCA2)
+pad_x <- diff(range(x_all)) * 0.15  # 15% padding
+pad_y <- diff(range(y_all)) * 0.15
+
+library(ggplot2)
+# If you have ggrepel installed, uncomment the next line and the two geom_text_repel layers
+# library(ggrepel)
+
 ggplot() +
-  # --- Sites (sampling units) ---
+  # Sites
   geom_point(
     data = dca_df,
-    aes(x = DCA1, y = DCA2, shape = river_reach, color = sampling_year),
-    size = 3,
-    alpha = 0.9
+    aes(DCA1, DCA2, shape = river_reach, color = sampling_year),
+    size = 3.5, alpha = 0.9
   ) +
+  # Site labels (black)
+  # geom_text_repel(
+  #   data = dca_df,
+  #   aes(DCA1, DCA2, label = location_id),
+  #   color = "black", size = 3, max.overlaps = Inf
+  # ) +
   geom_text(
     data = dca_df,
-    aes(x = DCA1, y = DCA2, label = location_id),
-    color = "black", size = 3.5, vjust = -0.8, fontface = "plain"
+    aes(DCA1, DCA2, label = location_id),
+    color = "black", size = 3.5, vjust = -0.8
   ) +
   
-  # --- Species (taxa) ---
+  # Species labels (red, italic)
+  # geom_text_repel(
+  #   data = species_scores,
+  #   aes(DCA1, DCA2, label = fish_species),
+  #   color = "red", fontface = "italic", size = 3, max.overlaps = Inf
+  # ) +
   geom_text(
     data = species_scores,
-    aes(x = DCA1, y = DCA2, label = fish_species),
-    color = "red", size = 3, fontface = "italic"
+    aes(DCA1, DCA2, label = fish_species),
+    color = "red", fontface = "italic", size = 3.5
   ) +
   
-  # --- Labels and Theme ---
+  # Axes padding
+  scale_x_continuous(limits = c(min(x_all) - pad_x, max(x_all) + pad_x), expand = expansion(0)) +
+  scale_y_continuous(limits = c(min(y_all) - pad_y, max(y_all) + pad_y), expand = expansion(0)) +
+  
   labs(
     title = "DCA",
     x = "DCA Axis 1",
@@ -202,10 +224,13 @@ ggplot() +
     color = "Year",
     shape = "River Reach"
   ) +
-  theme_minimal(base_size = 13) +
+  theme_minimal(base_size = 10) +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 14),
+    plot.title   = element_text(hjust = 0.5, size = 10),
     legend.position = "right",
-    legend.title = element_text(size = 12),
-    legend.text = element_text(size = 11)
-  )
+    legend.title = element_text(size = 10),
+    legend.text  = element_text(size = 10),
+    plot.margin  = margin(10, 20, 10, 20),  # extra room around the panel
+    panel.spacing = unit(6, "pt")
+  ) +
+  coord_cartesian(clip = "off")  # lets labels extend beyond panel if needed
