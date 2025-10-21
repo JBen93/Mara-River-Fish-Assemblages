@@ -20,7 +20,7 @@ library(ggplot2)
 # ---------------------------------------------------------------------
 # 1. Load and Prepare Data
 # ---------------------------------------------------------------------
-fish_long <- readr::read_csv(
+pastfish_long <- readr::read_csv(
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
@@ -34,7 +34,7 @@ fish_long <- readr::read_csv(
 # ---------------------------------------------------------------------
 # 2. Summarize and Convert from LONG → WIDE
 # ---------------------------------------------------------------------
-fish_sum <- fish_long %>%
+fish_sum <- pastfish_long %>%
   group_by(location_id, river_reach, sampling_year, sampling_month, fish_species) %>%
   summarise(total_abundance = sum(abundance), .groups = "drop")
 
@@ -118,43 +118,8 @@ ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
     na.rm = TRUE
   ) +
   labs(
-    title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
+    title = paste0("NMDS (2013,2014,2016) — Stress = ", round(nmds$stress, 3)),
     color = "River Reach",
-    shape = "River Reach"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    legend.position = "right"
-  )
-
-# ---------------------------------------------------------------------
-# 6. PCoA Ordination (with ellipses)
-# ---------------------------------------------------------------------
-
-# Compute Bray–Curtis distance and PCoA
-dist_bray <- vegan::vegdist(comm, method = "bray")
-pcoa_res <- cmdscale(dist_bray, eig = TRUE, k = 2)
-
-# Combine ordination axes with metadata
-pcoa_df <- data.frame(
-  Axis1 = pcoa_res$points[, 1],
-  Axis2 = pcoa_res$points[, 2],
-  meta_aligned
-)
-
-# Plot PCoA with ellipses grouped by sampling_year
-library(ggplot2)
-
-ggplot(pcoa_df, aes(Axis1, Axis2, color = sampling_year, shape = river_reach)) +
-  geom_point(size = 3, alpha = 0.9) +
-  stat_ellipse(aes(group = sampling_year),
-               linetype = "dashed", linewidth = 0.6, alpha = 0.6) +
-  labs(
-    title = "PCoA (Bray–Curtis Distance)",
-    x = paste0("Axis 1 (", round(pcoa_res$eig[1] / sum(pcoa_res$eig) * 100, 1), "%)"),
-    y = paste0("Axis 2 (", round(pcoa_res$eig[2] / sum(pcoa_res$eig) * 100, 1), "%)"),
-    color = "Sampling Year",
     shape = "River Reach"
   ) +
   theme_minimal(base_size = 13) +
@@ -260,7 +225,7 @@ library(ggplot2)
 
 #load data
 # Load and filter data for sites M1–M9 and years 2021–2022
-fish_long <- readr::read_csv(
+currentfish_long <- readr::read_csv(
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
@@ -278,7 +243,7 @@ fish_long <- readr::read_csv(
 # ---------------------------------------------------------------------
 # 2. Summarize and Convert from LONG → WIDE
 # ---------------------------------------------------------------------
-fish_sum <- fish_long %>%
+fish_sum <- currentfish_long %>%
   group_by(location_id, river_reach, sampling_year, sampling_month, fish_species) %>%
   summarise(total_abundance = sum(abundance), .groups = "drop")
 
@@ -364,7 +329,7 @@ ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
     na.rm = TRUE
   ) +
   labs(
-    title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
+    title = paste0("NMDS (2021-2022) — Stress = ", round(nmds$stress, 3)),
     color = "River Reach",
     shape = "River Reach"
   ) +
@@ -386,7 +351,7 @@ ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
     na.rm = TRUE
   ) +
   labs(
-    title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
+    title = paste0("NMDS (2021-2022) — Stress = ", round(nmds$stress, 3)),
     color = "River Reach",
     shape = "River Reach"
   ) +
