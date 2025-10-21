@@ -93,6 +93,7 @@ print(perm)
 # ---------------------------------------------------------------------
 # 5. NMDS Ordination
 # ---------------------------------------------------------------------
+# Extract NMDS site scores and join metadata
 set.seed(123)
 nmds <- metaMDS(comm, distance = "bray", k = 2, trymax = 100)
 
@@ -100,26 +101,33 @@ scores_nmds <- scores(nmds, display = "sites") %>%
   as.data.frame() %>%
   tibble::rownames_to_column("unit_id")
 
-nmds_df <- inner_join(scores_nmds, meta_aligned, by = "unit_id")
+nmds_df <- inner_join(scores_nmds, meta_aligned, by = "unit_id") %>%
+  mutate(
+    river_reach = factor(river_reach, levels = c("Upstream", "Midstream", "Downstream"))
+  )
 
-# Plot NMDS
-ggplot(nmds_df, aes(NMDS1, NMDS2, color = sampling_year, shape = river_reach)) +
+
+# NMDS plot with ellipses around river reach groups
+ggplot(nmds_df, aes(NMDS1, NMDS2, color = river_reach, shape = river_reach)) +
   geom_point(size = 3, alpha = 0.9) +
   stat_ellipse(
-    aes(group = sampling_year),
+    aes(group = river_reach),   # 👈 ellipse by reach
     linetype = "dashed",
-    linewidth = 0.6,
-    alpha = 0.5,
-    na.rm = TRUE,
-    show.legend = FALSE
+    linewidth = 0.8,
+    alpha = 0.6,
+    na.rm = TRUE
   ) +
   labs(
     title = paste0("NMDS (Bray–Curtis) — Stress = ", round(nmds$stress, 3)),
-    color = "Year",
-    shape = "Reach"
+    color = "River Reach",
+    shape = "River Reach"
   ) +
   theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+
 # ---------------------------------------------------------------------
 # 6. PCoA Ordination (with ellipses)
 # ---------------------------------------------------------------------

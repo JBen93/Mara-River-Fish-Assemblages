@@ -50,16 +50,16 @@ biomass_spp_site <- biomass_spp_year %>%
   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop")
 
 # ---- Site-level biomass (sum across species, all past years combined) ----
-biomass_site <- biomass_spp_site %>%
+pastbiomass_site <- biomass_spp_site %>%
   group_by(location_id) %>%
   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
   mutate(location_id = factor(location_id, levels = paste0("M", 2:9))) %>%
   arrange(location_id)
 
-print(biomass_site)
+print(pastbiomass_site)
 
 # ---- Build numeric site index for regression (M2 -> 2, ..., M9 -> 9) ----
-site_stats2 <- biomass_site %>%
+site_stats2 <- pastbiomass_site %>%
   mutate(
     site_order = as.numeric(str_remove(as.character(location_id), "^M")),
     location_id = factor(location_id, levels = paste0("M", 2:9))
@@ -97,7 +97,7 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
   theme(plot.title = element_text(size = 14, hjust = 0.5))
 
 # ---- Optional: bar plot of site biomass ----
-ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
+ggplot(pastbiomass_site, aes(x = location_id, y = biomass_g)) +
   geom_col(fill = "grey70", color = "black", width = 0.7) +
   labs(
     title = "2013–2016",
@@ -110,9 +110,7 @@ ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
 # ------------------------------------------------------------------------------
 # Current fish data (2021-2022)
 # clear everything in memory (of R)
-remove(list=ls())
 # load the renv package
-renv::restore()
 #load libararies 
 library(tidyverse) # for dplyr, ggplot2, tidyr, etc.
 library(readr) # for read_csv
@@ -157,16 +155,16 @@ biomass_spp_site <- biomass_spp_year %>%
   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop")
 
 # Site-level biomass = sum across species (both years combined)
-biomass_site <- biomass_spp_site %>%
+currentbiomass_site <- biomass_spp_site %>%
   group_by(location_id) %>%
   summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
   mutate(location_id = factor(location_id, levels = paste0("M", 2:9))) %>%
   arrange(location_id)
 
-print(biomass_site)
+print(currentbiomass_site)
 
 # ---- Regression: Biomass vs Site Order (M2 -> M9) ----
-site_stats2 <- biomass_site %>%
+site_stats2 <- currentbiomass_site %>%
   mutate(
     site_order = as.numeric(stringr::str_remove(as.character(location_id), "^M")),
     location_id = factor(location_id, levels = paste0("M", 2:9))
@@ -212,7 +210,7 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
   )
 
 # ---- Optional: also show a bar plot for quick comparison ----
-ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
+ggplot(currentbiomass_site, aes(x = location_id, y = biomass_g)) +
   geom_col(fill = "grey70", color = "black", width = 0.7) +
   labs(
     title = "2021–2022",
@@ -231,3 +229,106 @@ ggplot(biomass_site, aes(x = location_id, y = biomass_g)) +
 
 
 # -----------------------------
+# --------------------------------------------------------------
+# Compare past (2013–2016) vs current (2021–2022) biomass at M4, M7, M9
+# --------------------------------------------------------------
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ---------- 1) Normalize inputs ----------
+# Expect site-level frames named 'pastbiomass_site' and 'currentbiomass_site'
+# with columns: location_id, biomass_g. If your column is 'biomass', we map it.
+norm_sites <- function(df) {
+  stopifnot(is.data.frame(df))
+  # lowercase names
+  names(df) <- tolower(names(df))
+  # standardize 'location_id'
+  if ("site" %in% names(df) && !("location_id" %in% names(df))) {
+    df <- rename(df, location_id = site)
+  }
+  stopifnot("location_id" %in% names(df))
+  # standardize biomass column name
+  if (!("biomass_g" %in% names(df))) {
+    if ("biomass" %in% names(df)) {
+      df <- rename(df, biomass_g = biomass)
+    } else if ("biomass_total" %in% names(df)) {
+      df <- rename(df, biomass_g = biomass_total)
+    } else {
+      stop("Couldn't find a biomass column. Expect 'biomass_g' or 'biomass'.")
+    }
+  }
+  # coerce numeric and drop NA/negative
+  df %>%
+    mutate(
+      location_id = as.character(location_id),
+      biomass_g   = suppressWarnings(as.numeric(biomass_g))
+    ) %>%
+    filter(!is.na(biomass_g), biomass_g >= 0)
+}
+
+biomass_past    <- norm_sites(pastbiomass_site)    %>% mutate(period = "Past (2013–2016)")
+biomass_current <- norm_sites(currentbiomass_site) %>% mutate(period = "Current (2021–2022)")
+
+# ---------- 2) Combine + filter to sites ----------
+biomass_combined <- bind_rows(biomass_past, biomass_current)
+
+biomass_selected <- biomass_combined %>%
+  filter(location_id %in% c("M4","M7","M9")) %>%
+  mutate(
+    location_id = factor(location_id, levels = c("M4","M7","M9")),
+    period      = factor(period, levels = c("Past (2013–2016)", "Current (2021–2022)"))
+  )
+
+# Quick check
+if (nrow(biomass_selected) == 0) {
+  stop("No rows after filtering to M4, M7, M9. Check your 'location_id' values.")
+}
+print(biomass_selected)
+
+# ---------- 3) Summary stats (mean ± SD) per site × period ----------
+biomass_summary <- biomass_selected %>%
+  group_by(location_id, period) %>%
+  summarise(
+    mean_biomass = mean(biomass_g, na.rm = TRUE),
+    sd_biomass   = sd(biomass_g,   na.rm = TRUE),
+    n            = dplyr::n(),
+    .groups = "drop"
+  ) %>%
+  # if n == 1 then sd = NA; set to 0 so error bars still draw
+  mutate(sd_biomass = ifelse(is.na(sd_biomass), 0, sd_biomass))
+
+print(biomass_summary)
+
+# ---------- 4) Plot: X = site, fill = period ----------
+pd <- position_dodge(width = 0.7)
+
+p <- ggplot(biomass_summary, aes(x = location_id, y = mean_biomass, fill = period)) +
+  geom_col(position = pd, width = 0.6, color = "black") +
+  geom_errorbar(aes(ymin = mean_biomass - sd_biomass,
+                    ymax = mean_biomass + sd_biomass),
+                width = 0.2, position = pd) +
+  labs(
+    title = "Fish Biomass",
+    x = "Sampling Site",
+    y = "Mean Biomass (g)",
+    fill = "Sampling Period"
+  ) +
+  scale_fill_manual(values = c(
+    "Past (2013–2016)"   = "#A6CEE3",
+    "Current (2021–2022)" = "#1F78B4"
+  )) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title  = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.text.x = element_text(size = 11),
+    axis.title  = element_text(size = 12),
+    legend.position = "right"
+  )
+
+print(p)
+
+# --------------------------------------------------------------
+# Statistical comparison between sites using one way ANOVA 
+anova_result <- aov(biomass_g ~ location_id, data = biomass_selected)
+summary(anova_result)
