@@ -112,6 +112,8 @@ ggplot(pastbiomass_site, aes(x = location_id, y = biomass_g)) +
 # clear everything in memory (of R)
 # load the renv package
 #load libararies 
+#remove all objects from the environment
+remove(list=ls())
 library(tidyverse) # for dplyr, ggplot2, tidyr, etc.
 library(readr) # for read_csv
 library(janitor) # for clean_names
@@ -126,10 +128,10 @@ currentfish<- readr::read_csv(
 
 # Filter + choose length column; keep valid rows
 df1 <- currentfish %>%
-  filter(location_id %in% paste0("M", 2:9),
+  filter(location_id %in% paste0("M", 1:9),
          sampling_year %in% c(2021, 2022)) %>%
   mutate(
-    length_mm = dplyr::coalesce(standard_length),
+    length_mm = dplyr::coalesce(total_length),
     weight_g  = fish_weight
   ) %>%
   filter(!is.na(fish_species), fish_species != "",
