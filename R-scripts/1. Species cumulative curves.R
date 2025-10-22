@@ -28,19 +28,19 @@ years_keep <- c(2013,2014,2016)
 # Clean & filter (each row = one fish)
 pastspec2<-pastspec%>%
   mutate(
-    location_ID = as.character(location_ID),
+    location_id = as.character(location_id),
     fish_species = stringr::str_squish(fish_species)
   ) %>%
-  filter(location_ID %in% sites_keep,
+  filter(location_id %in% sites_keep,
          sampling_year %in% years_keep)
 
 # Build site x species abundance matrix (counts of individuals)
 #   - Rows: sites
 #   - Cols: species
 comm_mat <-pastspec2 %>%
-  count(location_ID, fish_species, name = "abund") %>%
+  count(location_id, fish_species, name = "abund") %>%
   tidyr::pivot_wider(names_from = fish_species, values_from = abund, values_fill = 0) %>%
-  tibble::column_to_rownames("location_ID") %>%
+  tibble::column_to_rownames("location_id") %>%
   as.data.frame()
 
 # ---- Species Accumulation (randomized order, 1000 perms) ----
@@ -79,77 +79,7 @@ ggplot(acc_df, aes(x = sites, y = richness)) +
     plot.title = element_text(hjust = 0.5)  # Removed bold (no face="bold")
   )
 # --------------------------------------------------------------------------------------------
-#Species Accumulation Curve for the current fish data 2021–2022 (Sites M2, M3, M4,M5,M6, M7, M9) 
-# --------------------------------------------------------------------------------------------
-# clear everything in memory (of R)
-remove(list=ls())
-# load the the required packages
-library(tidyverse)
-library(readr)
-library(vegan)
 
-#data URL source if you need to inspect for the whole dataset
-#browseURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml")
-
-# Load data from Google Sheets
-currentspec <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
-  show_col_types = FALSE
-)
-
-# -----------------------------
-# CONFIG: which sites to include
-# -----------------------------
-sites_keep <- c("M2","M3","M4","M5","M6","M7","M9")  # (M8 omitted per your list)
-years_keep <- c(2021, 2022)
-
-# Clean & filter (each row = one fish)
-currentspec2<- currentspec%>%
-  mutate(
-    location_ID = as.character(location_ID),
-    fish_species = stringr::str_squish(fish_species)
-  ) %>%
-  filter(location_ID %in% sites_keep,
-         sampling_year %in% years_keep)
-
-# Build site x species abundance matrix (counts of individuals)
-#   - Rows: sites
-#   - Cols: species
-comm_mat <- currentspec2 %>%
-  count(location_ID, fish_species, name = "abund") %>%
-  tidyr::pivot_wider(names_from = fish_species, values_from = abund, values_fill = 0) %>%
-  tibble::column_to_rownames("location_ID") %>%
-  as.data.frame()
-
-# ---- Species Accumulation (randomized order, 1000 perms) ----
-set.seed(123)  # for reproducibility
-spec_acc <- vegan::specaccum(comm_mat, method = "random", permutations = 1000)
-
-# Prepare data for ggplot (95% CI ≈ mean ± 1.96 * sd)
-acc_df <- tibble(
-  sites = spec_acc$sites,
-  richness = spec_acc$richness,
-  sd = spec_acc$sd
-) %>%
-  mutate(
-    lower = pmax(richness - 1.96 * sd, 0),
-    upper = richness + 1.96 * sd
-  )
-
-# ---- Plot: Species Accumulation Curve (All sites combined across 2021–2022) ----
-ggplot(acc_df, aes(x = sites, y = richness)) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, fill = "grey70") +
-  geom_line(size = 1) +
-  geom_point(size = 2) +
-  labs(
-    title = "2021–2022",
-    x = "Number of Sites",
-    y = "Cumulative Species Richness"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(hjust = 0.5)  # Removed bold (no face="bold")
-  )
 ####################################################################################
 #Species cumulative curve for only 3 sites M4,M7 and M9 during 2021-2022
 #################################################################
@@ -225,4 +155,187 @@ ggplot(acc_df, aes(x = sites, y = richness)) +
     plot.title = element_text(hjust = 0.5)  # Removed bold
     )
 ####################################################################################
+#Species Accumulation Curve for the current fish data 2021–2022 (Sites M2, M3, M4,M5,M6, M7, M9) 
+# --------------------------------------------------------------------------------------------
+# clear everything in memory (of R)
+remove(list=ls())
+# load the the required packages
+library(tidyverse)
+library(readr)
+library(vegan)
 
+#data URL source if you need to inspect for the whole dataset
+#browseURL("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pubhtml")
+
+# Load data from Google Sheets
+currentspec <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+  show_col_types = FALSE
+)
+
+# -----------------------------
+# CONFIG: which sites to include
+# -----------------------------
+sites_keep <- c("M2","M3","M4","M5","M6","M7","M9")  # (M8 omitted per your list)
+years_keep <- c(2021, 2022)
+
+# Clean & filter (each row = one fish)
+currentspec2<- currentspec%>%
+  mutate(
+    location_ID = as.character(location_ID),
+    fish_species = stringr::str_squish(fish_species)
+  ) %>%
+  filter(location_ID %in% sites_keep,
+         sampling_year %in% years_keep)
+
+# Build site x species abundance matrix (counts of individuals)
+#   - Rows: sites
+#   - Cols: species
+comm_mat <- currentspec2 %>%
+  count(location_ID, fish_species, name = "abund") %>%
+  tidyr::pivot_wider(names_from = fish_species, values_from = abund, values_fill = 0) %>%
+  tibble::column_to_rownames("location_ID") %>%
+  as.data.frame()
+
+# ---- Species Accumulation (randomized order, 1000 perms) ----
+set.seed(123)  # for reproducibility
+spec_acc <- vegan::specaccum(comm_mat, method = "random", permutations = 1000)
+
+# Prepare data for ggplot (95% CI ≈ mean ± 1.96 * sd)
+acc_df <- tibble(
+  sites = spec_acc$sites,
+  richness = spec_acc$richness,
+  sd = spec_acc$sd
+) %>%
+  mutate(
+    lower = pmax(richness - 1.96 * sd, 0),
+    upper = richness + 1.96 * sd
+  )
+
+# ---- Plot: Species Accumulation Curve (All sites combined across 2021–2022) ----
+ggplot(acc_df, aes(x = sites, y = richness)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, fill = "grey70") +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "2021–2022",
+    x = "Number of Sites",
+    y = "Cumulative Species Richness"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5)  # Removed bold (no face="bold")
+  )
+####################################################################################
+# ============================================================
+# Species accumulation with X = Number of samples (events)
+#   - A "sample" = site × year (and × month if available)
+#   - Compares Past (2013–2016) vs Current (2021–2022)
+#   - Uses sites M4, M7, M9 only (edit as needed)
+# ============================================================
+
+remove(list = ls())
+library(tidyverse)
+library(readr)
+library(janitor)
+library(vegan)
+
+# --------------------------
+# Helper: build SAMPLE (event) × SPECIES presence/absence matrix
+# --------------------------
+build_sample_matrix <- function(url, years_keep, sites_keep) {
+  df <- readr::read_csv(url, show_col_types = FALSE) %>%
+    clean_names() %>%
+    mutate(
+      location_id  = as.character(location_id),
+      fish_species = stringr::str_squish(tolower(fish_species))
+    ) %>%
+    filter(
+      location_id %in% sites_keep,
+      sampling_year %in% years_keep,
+      !is.na(fish_species), fish_species != ""
+    )
+  
+  # Make a sampling-event ID:
+  # If sampling_month exists, use site-year-month; otherwise site-year.
+  if ("sampling_month" %in% names(df)) {
+    df <- df %>% mutate(sample_id = paste(location_id, sampling_year, sampling_month, sep = "_"))
+  } else {
+    df <- df %>% mutate(sample_id = paste(location_id, sampling_year, sep = "_"))
+  }
+  
+  # SAMPLE × SPECIES counts -> presence/absence
+  mat <- df %>%
+    count(sample_id, fish_species, name = "abund") %>%
+    tidyr::pivot_wider(names_from = fish_species, values_from = abund, values_fill = 0) %>%
+    arrange(sample_id)
+  
+  samp_names <- mat$sample_id
+  mat <- mat %>% select(-sample_id) %>% as.data.frame()
+  rownames(mat) <- samp_names
+  
+  # Presence/absence for richness accumulation
+  mat[mat > 0] <- 1
+  mat
+}
+
+# --------------------------
+# Config
+# --------------------------
+sites_keep  <- c("M4","M7","M9")
+years_past  <- c(2013, 2014, 2016)
+years_curr  <- c(2021, 2022)
+
+url_past <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv"
+url_curr <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+
+# --------------------------
+# Build matrices (rows = sampling events)
+# --------------------------
+mat_past <- build_sample_matrix(url_past, years_past, sites_keep)
+mat_curr <- build_sample_matrix(url_curr, years_curr, sites_keep)
+
+# --------------------------
+# Species accumulation (randomized order → samples = events)
+# --------------------------
+set.seed(123)
+acc_past <- specaccum(mat_past, method = "random", permutations = 1000)
+acc_curr <- specaccum(mat_curr, method = "random", permutations = 1000)
+
+acc_df_past <- tibble(
+  period     = "Past (2013–2016)",
+  n_samples  = acc_past$sites,      # number of sampling events accumulated
+  richness   = acc_past$richness,
+  sd         = acc_past$sd
+) %>%
+  mutate(lower = pmax(richness - 1.96*sd, 0),
+         upper = richness + 1.96*sd)
+
+acc_df_curr <- tibble(
+  period     = "Current (2021–2022)",
+  n_samples  = acc_curr$sites,
+  richness   = acc_curr$richness,
+  sd         = acc_curr$sd
+) %>%
+  mutate(lower = pmax(richness - 1.96*sd, 0),
+         upper = richness + 1.96*sd)
+
+acc_all <- bind_rows(acc_df_past, acc_df_curr)
+
+# --------------------------
+# Plot: X = Number of samples (events)
+# --------------------------
+ggplot(acc_all, aes(x = n_samples, y = richness, color = period, fill = period)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.18, color = NA) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = seq_len(max(acc_all$n_samples))) +
+  labs(
+    title = "Species Accumulation at site M4, M7, M9",
+    x     = "Number of samples ",
+    y     = "Cumulative species richness",
+    color = "Period",
+    fill  = "Period"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
