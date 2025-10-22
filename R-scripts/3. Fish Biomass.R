@@ -420,8 +420,8 @@ ggplot(summary_site_period, aes(x = location_id, y = mean_biomass, fill = period
   # ---- Add p-value annotation ----
 annotate("text",
          x = 2,                     # horizontal position (M7 = middle site)
-         y = 13500,                 # vertical position (top of y-axis)
-         label = "p = 0.1444",
+         y = 13500,               # vertical position (top of y-axis)
+         label = "(Welch t-test: p = 0.1444)",
          size = 5,
          fontface = "italic") +
   # ---- Styling ----
