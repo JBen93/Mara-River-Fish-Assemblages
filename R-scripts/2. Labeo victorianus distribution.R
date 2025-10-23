@@ -89,7 +89,7 @@ dat_mean <- dat_summary %>%
 ggplot(dat_mean, aes(x = location_ID, y = mean_abundance, fill = "grey")) +
   geom_col(width = 0.7, color = "black") +
   labs(
-    title = "Mean abundance of Labeo victorianus across sites (2021–2022)",
+    title = "Labeo victorianus (2021–2022)",
     x = "Sampling site",
     y = "Mean abundance (number of individuals)"
   ) +
