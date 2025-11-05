@@ -1,6 +1,13 @@
 #Fish Isotope using SIBER R package
 # clear everything in memory (of R)
 remove(list=ls())
+
+install.packages("rjags")     # now should succeed
+install.packages("SIBER")
+# or, if you’re using renv strictly:
+renv::install(c("rjags","SIBER"))
+renv::snapshot()
+
 # load the the required packages
 library(tidyverse)
 library(readr)
