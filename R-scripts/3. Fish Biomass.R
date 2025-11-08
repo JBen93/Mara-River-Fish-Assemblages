@@ -448,4 +448,139 @@ combined_df <- bind_rows(past_biomass_spp_year, current_biomass_spp_year)
 
 t.test(mean_weight_g ~ period, data = combined_df)
 
+######################################################################################
+# Required packages
+library(dplyr)
+library(ggplot2)
+library(emmeans)
+library(multcompView)
 
+# Filter only the sites of interest
+sites_focus <- c("M4", "M7", "M9")
+
+# Subset your data to these sites (using both periods combined)
+biomass_subset <- site_year_all %>%
+  filter(location_id %in% sites_focus)
+
+# Kruskal–Wallis global test
+print(kruskal.test(biomass_g ~ location_id, data = biomass_subset))
+
+# Dunn pairwise tests and letters
+if (!requireNamespace("FSA", quietly = TRUE)) install.packages("FSA")
+library(FSA)
+dunn <- FSA::dunnTest(biomass_g ~ location_id, data = biomass_subset, method = "bh")
+pw <- dunn$res %>% select(Comparison, P.adj)
+
+# Build a letters object from pairwise p-values
+split_cmp <- strsplit(pw$Comparison, " - ")
+pairs_mat <- do.call(rbind, split_cmp)
+colnames(pairs_mat) <- c("g1","g2")
+p_tab <- data.frame(g1 = pairs_mat[,1], g2 = pairs_mat[,2], p = pw$P.adj)
+
+all_sites <- sort(unique(c(p_tab$g1, p_tab$g2)))
+mat <- matrix(1, nrow = length(all_sites), ncol = length(all_sites),
+              dimnames = list(all_sites, all_sites))
+for (i in seq_len(nrow(p_tab))) {
+  mat[p_tab$g1[i], p_tab$g2[i]] <- p_tab$p[i]
+  mat[p_tab$g2[i], p_tab$g1[i]] <- p_tab$p[i]
+}
+letters_nonpar <- multcompView::multcompLetters(mat < 0.05)$Letters
+tukey_letters <- data.frame(location_id = names(letters_nonpar),
+                            letter = unname(letters_nonpar))
+print(tukey_letters)
+# =========================
+# Between-site test & letters (M4, M7, M9)
+# =========================
+library(dplyr)
+library(ggplot2)
+library(FSA)            # for dunnTest
+library(multcompView)   # for multcompLetters
+
+sites_focus <- c("M4","M7","M9")
+
+# Use both periods combined; years provide replication
+biomass_subset <- site_year_all %>%
+  filter(location_id %in% sites_focus) %>%
+  mutate(location_id = factor(location_id, levels = sites_focus))
+
+# ---- Global nonparametric test ----
+print(kruskal.test(biomass_g ~ location_id, data = biomass_subset))
+
+# ---- Dunn pairwise tests (BH-adjusted) ----
+dunn <- FSA::dunnTest(biomass_g ~ location_id, data = biomass_subset, method = "bh")
+pw   <- dunn$res %>% select(Comparison, P.adj)
+
+# Build a p-value matrix for multcompLetters
+split_cmp <- strsplit(pw$Comparison, " - ")
+pairs_mat <- do.call(rbind, split_cmp)
+colnames(pairs_mat) <- c("g1","g2")
+p_tab <- data.frame(g1 = pairs_mat[,1], g2 = pairs_mat[,2], p = pw$P.adj, stringsAsFactors = FALSE)
+
+all_sites <- sites_focus
+pmat <- matrix(1, nrow = length(all_sites), ncol = length(all_sites),
+               dimnames = list(all_sites, all_sites))
+for (i in seq_len(nrow(p_tab))) {
+  pmat[p_tab$g1[i], p_tab$g2[i]] <- p_tab$p[i]
+  pmat[p_tab$g2[i], p_tab$g1[i]] <- p_tab$p[i]
+}
+
+# Compact letter display at alpha = 0.05
+letters_obj <- multcompView::multcompLetters(pmat < 0.05)
+letters_df  <- data.frame(location_id = names(letters_obj$Letters),
+                          letter = unname(letters_obj$Letters),
+                          stringsAsFactors = FALSE)
+
+# ---- Site means ± SE for plotting ----
+summary_site <- biomass_subset %>%
+  group_by(location_id) %>%
+  summarise(
+    n_years      = n(),
+    mean_biomass = mean(biomass_g, na.rm = TRUE),
+    sd_biomass   = sd(biomass_g,   na.rm = TRUE),
+    se_biomass   = sd_biomass / sqrt(n_years),
+    .groups = "drop"
+  ) %>%
+  left_join(letters_df, by = "location_id")
+
+# ---- Optional: force simple a/b/c when all three sites differ pairwise ----
+# If each site has exactly one unique letter (no overlaps like "ab"),
+# remap letters so that lowest mean = 'a', middle = 'b', highest = 'c'.
+simple_abc <- all(nchar(summary_site$letter) == 1) &&
+  length(unique(summary_site$letter)) == length(sites_focus)
+
+if (simple_abc) {
+  rank_order <- summary_site %>%
+    arrange(mean_biomass) %>%
+    mutate(new_letter = letters[1:n()]) %>%  # 'a','b','c',...
+    select(location_id, new_letter)
+  summary_site <- summary_site %>%
+    left_join(rank_order, by = "location_id") %>%
+    mutate(letter = new_letter) %>%
+    select(-new_letter)
+}
+
+# Position for the letters above error bars
+ymax <- max(with(summary_site, mean_biomass + se_biomass), na.rm = TRUE)
+summary_site <- summary_site %>%
+  mutate(y_lab = mean_biomass + se_biomass + 0.05 * ymax)
+
+# ---- Plot: bars with SE and letters ----
+ggplot(summary_site, aes(x = location_id, y = mean_biomass)) +
+  geom_col(width = 0.6, fill = "grey70", color = "black") +
+  geom_errorbar(aes(ymin = pmax(mean_biomass - se_biomass, 0),
+                    ymax = mean_biomass + se_biomass),
+                width = 0.2) +
+  geom_text(aes(y = y_lab, label = letter),
+            vjust = 0, size = 6, fontface = "bold") +
+  labs(
+    title = "",
+    x = "Site",
+    y = "Mean Biomass (g; two periods combined)"
+  ) +
+  coord_cartesian(ylim = c(0, ymax * 1.15)) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(size = 12),
+    axis.title  = element_text(size = 12)
+  )

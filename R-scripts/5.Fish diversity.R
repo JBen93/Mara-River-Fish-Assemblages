@@ -158,8 +158,259 @@ ggplot(div_m, aes(x = location_id, y = shannon_H, fill = period)) +
     legend.position = "right",
     strip.text = element_text(face = "bold")
   )
+###################################################################
+# ==============================
+# Diversity indices & H′ boxplot
+# ==============================
 
-print(p_box_sites)
+remove(list = ls())
 
-# (Optional) Also print the exact p-values table
-pvals %>% select(location_id, p, p.adj, p.label) %>% arrange(location_id) %>% print()
+library(tidyverse)
+library(janitor)
+library(readr)
+library(vegan)
+library(ggpubr)
+library(rstatix)
+
+# -------- Helper to prepare one period --------
+prep_period <- function(url, years_keep, period_label) {
+  readr::read_csv(url, show_col_types = FALSE) %>%
+    clean_names() %>%
+    mutate(
+      fish_species = stringr::str_squish(tolower(fish_species)),
+      abundance = 1
+    ) %>%
+    filter(
+      !is.na(location_id), !is.na(sampling_year), !is.na(fish_species),
+      sampling_year %in% years_keep,
+      location_id %in% paste0("M", 1:9)
+    ) %>%
+    group_by(location_id, sampling_year, fish_species) %>%
+    summarise(n = sum(abundance), .groups = "drop") %>%
+    pivot_wider(names_from = fish_species, values_from = n, values_fill = 0) %>%
+    mutate(period = period_label) %>%
+    relocate(period, location_id, sampling_year)
+}
+
+# -------- Load both periods --------
+url_past <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=983226609&single=true&output=csv"
+url_curr <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+
+past_wide  <- prep_period(url_past, years_keep = c(2013, 2014, 2016), period_label = "Past (2013–2016)")
+curr_wide  <- prep_period(url_curr, years_keep = c(2021, 2022),        period_label = "Current (2021–2022)")
+
+# Species columns and combine
+species_cols <- function(df) setdiff(names(df), c("period","location_id","sampling_year"))
+all_species <- sort(unique(c(species_cols(past_wide), species_cols(curr_wide))))
+
+add_missing_species <- function(df, all_species) {
+  miss <- setdiff(all_species, names(df))
+  if (length(miss) > 0) df[miss] <- 0
+  df %>% select(period, location_id, sampling_year, all_of(all_species))
+}
+
+past_wide <- add_missing_species(past_wide, all_species)
+curr_wide <- add_missing_species(curr_wide, all_species)
+div_mat   <- bind_rows(past_wide, curr_wide)
+
+# -------- Compute diversity indices per site-year --------
+species_mat <- div_mat %>% select(all_of(all_species)) %>% as.data.frame()
+species_mat[is.na(species_mat)] <- 0
+
+H  <- vegan::diversity(species_mat, index = "shannon")
+S  <- vegan::specnumber(species_mat)
+J  <- ifelse(S > 0, H / log(S), NA_real_)
+EN <- exp(H)
+
+div_indices <- div_mat %>%
+  select(period, location_id, sampling_year) %>%
+  mutate(
+    shannon_H   = H,
+    richness_S  = S,
+    pielou_J    = J,
+    effective_N = EN
+  ) %>%
+  filter(is.finite(shannon_H)) %>%
+  mutate(period = factor(period)) %>%
+  droplevels()
+
+# ----- Focus on sites M4, M7, M9 and tidy factors -----
+sites_of_interest <- c("M4","M7","M9")
+div_m <- div_indices %>%
+  filter(location_id %in% sites_of_interest) %>%
+  mutate(
+    period = factor(period, levels = c("Past (2013–2016)", "Current (2021–2022)")),
+    location_id = factor(location_id, levels = sites_of_interest)
+  )
+
+# -------- Global significance test (Past vs Current) --------
+# Non-parametric Wilcoxon rank-sum (Mann–Whitney)
+global_test <- wilcox.test(shannon_H ~ period, data = div_m, exact = FALSE)
+p_glob <- global_test$p.value
+test_label <- sprintf("Wilcoxon rank-sum: p = %.3f", p_glob)
+
+# For positioning the annotation
+y_top <- max(div_m$shannon_H, na.rm = TRUE)
+
+# -------- Plot --------
+pd  <- position_dodge(width = 0.65)
+pjd <- position_jitterdodge(jitter.width = 0.08, dodge.width = 0.65)
+
+ggplot(div_m, aes(x = location_id, y = shannon_H, fill = period)) +
+  geom_boxplot(position = pd, width = 0.55, alpha = 0.9,
+               outlier.shape = NA, color = "black") +
+  geom_jitter(position = pjd, size = 2, alpha = 0.6) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "H′ (Shannon–Wiener)",
+    fill = "Sampling Period"
+  ) +
+  scale_fill_manual(values = c("Past (2013–2016)" = "#A6CEE3",
+                               "Current (2021–2022)" = "#1F78B4")) +
+  expand_limits(y = y_top * 1.18) +
+  # Top-left annotation with test name and p-value
+  annotate("text",
+           x = 0.55, y = y_top * 1.15,
+           hjust = 0, vjust = 1,
+           label = test_label, size = 4.2) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right",
+    strip.text = element_text(face = "bold")
+  )
+###########################################################################
+# ==========================================
+# Combined barplots (Past & Current together)
+# Kruskal–Wallis + Dunn(BH) letters per period
+# ==========================================
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(FSA)            # dunnTest
+library(multcompView)   # multcompLetters
+
+sites_focus   <- c("M4","M7","M9")
+period_levels <- c("Past (2013–2016)", "Current (2021–2022)")
+
+# Keep only the sites and periods of interest
+div_m2 <- div_m %>%
+  filter(location_id %in% sites_focus,
+         period %in% period_levels) %>%
+  mutate(
+    location_id = factor(location_id, levels = sites_focus),
+    period      = factor(period, levels = period_levels)
+  )
+
+# ---------- helper: Dunn letters among sites for ONE period ----------
+letters_for_period <- function(dat_period, sites_order) {
+  dat_period <- dat_period %>% filter(location_id %in% sites_order)
+  if (length(unique(dat_period$location_id)) < 2) {
+    return(list(
+      letters_df = data.frame(location_id = sites_order, letter = NA_character_),
+      kw_p = NA_real_
+    ))
+  }
+  # Global KW
+  kw <- kruskal.test(shannon_H ~ location_id, data = dat_period)
+  # Pairwise Dunn (BH)
+  dunn <- FSA::dunnTest(shannon_H ~ location_id, data = dat_period, method = "bh")
+  pw <- dunn$res %>% select(Comparison, P.adj)
+  
+  present <- sort(unique(dat_period$location_id))
+  pmat <- matrix(1, nrow = length(present), ncol = length(present),
+                 dimnames = list(present, present))
+  if (nrow(pw) > 0) {
+    pairs <- do.call(rbind, strsplit(pw$Comparison, " - "))
+    colnames(pairs) <- c("g1","g2")
+    p_tab <- data.frame(g1 = pairs[,1], g2 = pairs[,2], p = pw$P.adj,
+                        stringsAsFactors = FALSE)
+    for (i in seq_len(nrow(p_tab))) {
+      if (p_tab$g1[i] %in% present && p_tab$g2[i] %in% present) {
+        pmat[p_tab$g1[i], p_tab$g2[i]] <- p_tab$p[i]
+        pmat[p_tab$g2[i], p_tab$g1[i]] <- p_tab$p[i]
+      }
+    }
+  }
+  letters_obj <- multcompView::multcompLetters(pmat < 0.05)
+  letters_df  <- data.frame(location_id = names(letters_obj$Letters),
+                            letter      = unname(letters_obj$Letters),
+                            stringsAsFactors = FALSE)
+  letters_df <- data.frame(location_id = sites_order, stringsAsFactors = FALSE) %>%
+    left_join(letters_df, by = "location_id")
+  list(letters_df = letters_df, kw_p = kw$p.value)
+}
+
+# ---------- letters & summaries per period ----------
+# Past
+res_past <- letters_for_period(filter(div_m2, period == period_levels[1]), sites_focus)
+# Current
+res_curr <- letters_for_period(filter(div_m2, period == period_levels[2]), sites_focus)
+
+letters_all <- bind_rows(
+  res_past$letters_df %>% mutate(period = period_levels[1]),
+  res_curr$letters_df %>% mutate(period = period_levels[2])
+) %>%
+  mutate(
+    period      = factor(period, levels = period_levels),
+    location_id = factor(location_id, levels = sites_focus)
+  )
+
+# Summaries for plotting (mean ± SE of H′ per site × period)
+summ_H <- div_m2 %>%
+  group_by(period, location_id) %>%
+  summarise(
+    n_years = dplyr::n(),
+    mean_H  = mean(shannon_H, na.rm = TRUE),
+    sd_H    = sd(shannon_H,   na.rm = TRUE),
+    se_H    = sd_H / sqrt(n_years),
+    .groups = "drop"
+  ) %>%
+  left_join(letters_all, by = c("period","location_id")) %>%
+  group_by(period) %>%
+  mutate(
+    y_lab = mean_H + se_H + 0.05 * max(mean_H + se_H, na.rm = TRUE),
+    kw_label = dplyr::case_when(
+      period == period_levels[1] ~ paste0("Kruskal–Wallis p = ",
+                                          formatC(res_past$kw_p, format = "f", digits = 3)),
+      period == period_levels[2] ~ paste0("Kruskal–Wallis p = ",
+                                          formatC(res_curr$kw_p, format = "f", digits = 3)),
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  ungroup()
+
+# ---------- single combined figure (two panels) ----------
+ymax <- summ_H %>%
+  group_by(period) %>%
+  summarise(ym = max(y_lab, na.rm = TRUE), .groups = "drop") %>%
+  pull(ym) %>% max(na.rm = TRUE)
+
+ggplot(summ_H, aes(x = location_id, y = mean_H)) +
+  geom_col(width = 0.65, color = "black", fill = "grey70") +
+  geom_errorbar(aes(ymin = pmax(mean_H - se_H, 0), ymax = mean_H + se_H),
+                width = 0.22) +
+  geom_text(aes(y = y_lab, label = letter),
+            vjust = 0, size = 6, fontface = "bold", na.rm = TRUE) +
+  facet_wrap(~ period, ncol = 2) +
+  scale_y_continuous(limits = c(0, ymax * 1.05),
+                     breaks = scales::pretty_breaks(n = 6)) +
+  labs(
+    title = "",
+    x = "Site",
+    y = "Shannon–Wiener (H′; mean ± SE)"
+  ) +
+  # KW p-value annotation per panel
+  geom_text(
+    data = summ_H %>% group_by(period) %>% slice(1),
+    aes(x = 0.6, y = max(summ_H$y_lab, na.rm = TRUE) * 1.02, label = kw_label),
+    inherit.aes = FALSE, hjust = 0, vjust = 0, size = 4.2
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title  = element_text(hjust = 0.5, face = "bold"),
+    strip.text  = element_text(face = "bold"),
+    axis.text.x = element_text(size = 12),
+    axis.title  = element_text(size = 12)
+  )
