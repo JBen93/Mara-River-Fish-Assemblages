@@ -245,7 +245,6 @@ ggplot(dat_rel, aes(x = location_ID, y = relative_abundance, fill = "grey")) +
   )
 ####################################################################################
 # Relative abundance of Labeo victorianus & Labeobarbus altianalis (M2–M9; 2021–2022)
-# Relative abundance of Labeo victorianus & Labeobarbus altianalis (M2–M9; 2021–2022)
 remove(list = ls())
 
 library(tidyverse)
@@ -253,22 +252,21 @@ library(readr)
 library(janitor)
 library(stringr)
 
-# --- Load & clean ---
-dat <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+# --- Load & clean data ---
+dat <- readr::read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
-  janitor::clean_names() %>%
+  clean_names() %>%
   mutate(
     fish_species = str_squish(str_to_lower(fish_species))
   ) %>%
   filter(
-    location_id %in% paste0("M", 2:9),
+    location_id %in% paste0("M", 4:9),
     sampling_year %in% c(2021, 2022),
     !is.na(fish_species), fish_species != ""
   )
 
-# Canonicalize the two target species
+# --- Canonicalize species names ---
 dat <- dat %>%
   mutate(
     species_canon = case_when(
@@ -278,48 +276,60 @@ dat <- dat %>%
     )
   )
 
-# ---- Count total catch per site (all species) ----
+# --- Count total catch per site (all species) ---
 site_totals <- dat %>%
   count(location_id, name = "n_total")
 
-# ---- Count focal species per site ----
+# --- Count focal species per site ---
 focal_counts <- dat %>%
   filter(!is.na(species_canon)) %>%
-  count(location_id, species_canon, name = "n_focal")
-
-# Fill zeros for missing species
-focal_counts <- focal_counts %>%
-  tidyr::complete(
-    location_id = factor(paste0("M", 2:9), levels = paste0("M", 2:9)),
+  count(location_id, species_canon, name = "n_focal") %>%
+  complete(
+    location_id = factor(paste0("M", 4:9), levels = paste0("M", 4:9)),
     species_canon = factor(c("Labeo victorianus", "Labeobarbus altianalis"),
                            levels = c("Labeo victorianus", "Labeobarbus altianalis")),
     fill = list(n_focal = 0)
   )
 
-# ---- Relative abundance (%) ----
+# --- Relative abundance (%) ---
 rel_abund <- focal_counts %>%
   left_join(site_totals, by = "location_id") %>%
   mutate(
     rel_percent = if_else(n_total > 0, 100 * n_focal / n_total, 0)
   )
 
-# ---- Plot: stacked relative abundance ----
-ggplot(rel_abund,
-       aes(x = location_id, y = rel_percent, fill = species_canon)) +
+# --- Custom colours ---
+pal_species <- c(
+  "Labeo victorianus"      = "#1F78B4",  # deep blue
+  "Labeobarbus altianalis" = "#E41A1C"   # vivid red
+)
+
+# --- Order legend by higher overall abundance ---
+species_order <- rel_abund %>%
+  group_by(species_canon) %>%
+  summarise(mean_rel = mean(rel_percent, na.rm = TRUE)) %>%
+  arrange(desc(mean_rel)) %>%
+  pull(species_canon)
+
+rel_abund <- rel_abund %>%
+  mutate(species_canon = factor(species_canon, levels = species_order))
+
+# --- Plot: stacked relative abundance ---
+ggplot(rel_abund, aes(x = location_id, y = rel_percent, fill = species_canon)) +
   geom_col(width = 0.7, color = "black") +
   scale_x_discrete(drop = FALSE) +
-  scale_y_continuous(labels = scales::percent_format(scale = 1),
-                     limits = c(0, 100),
-                     expand = expansion(mult = c(0, 0.02))) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 100),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
   scale_fill_manual(
     name = "Species",
-    values = c(
-      "Labeo victorianus"   = "#E69F00",  # orange
-      "Labeobarbus altianalis" = "#009E73"  # teal/green
-    )
+    values = pal_species,
+    breaks = species_order
   ) +
   labs(
-    title = "Relative Abundance of Two Dominant Fish Species (2021–2022)",
+    title = "",
     x = "Sampling Site",
     y = "Relative Abundance (%)"
   ) +
@@ -332,6 +342,56 @@ ggplot(rel_abund,
     legend.title = element_text(size = 12, face = "bold"),
     legend.text = element_text(size = 11)
   )
+# --- Custom colours (same as before) ---
+pal_species <- c(
+  "Labeo victorianus"      = "#1F78B4",  # deep blue
+  "Labeobarbus altianalis" = "#E41A1C"   # vivid red
+)
+
+# --- Order legend by higher overall mean relative abundance ---
+species_order <- rel_abund %>%
+  dplyr::group_by(species_canon) %>%
+  dplyr::summarise(mean_rel = mean(rel_percent, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::arrange(dplyr::desc(mean_rel)) %>%
+  dplyr::pull(species_canon)
+
+rel_abund_plot <- rel_abund %>%
+  dplyr::mutate(species_canon = factor(species_canon, levels = species_order))
+
+# --- Grouped bar plot (two bars per site) with Y-axis 0–75% ---
+ggplot(rel_abund_plot,
+       aes(x = location_id, y = rel_percent, fill = species_canon)) +
+  geom_col(position = position_dodge(width = 0.72), width = 0.62, color = "black") +
+  scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 75),              # Start at 0%, end at 75%
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_fill_manual(
+    name   = "Species",
+    values = c(
+      "Labeo victorianus"      = "#1F78B4",  # deep blue
+      "Labeobarbus altianalis" = "#E41A1C"   # vivid red
+    ),
+    breaks = species_order
+  ) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "Relative Abundance (%)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold", hjust = 0.5),
+    axis.text.x   = element_text(size = 11),
+    axis.title.y  = element_text(size = 12),
+    legend.position = "right",
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text  = element_text(size = 11)
+  )
+
+
 ################################################################################
 remove(list = ls())
 
@@ -343,8 +403,7 @@ library(forcats)
 library(scales)
 
 # --- Load & clean ---
-dat <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+dat <- readr::read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
   show_col_types = FALSE
 ) %>%
   clean_names() %>%
@@ -413,8 +472,8 @@ base_cols <- hue_pal(h = c(10, 350), c = 100, l = 60)(length(all_species))
 pal <- setNames(base_cols, all_species)
 
 # overwrite the two focal species with your fixed colors
-pal["Labeo victorianus"]      <- "#E69F00"  # orange
-pal["Labeobarbus altianalis"] <- "#009E73"  # teal/green
+pal["Labeo victorianus"]      <- "#1F78B4"  # deep blue
+pal["Labeobarbus altianalis"] <- "#E41A1C"  #vivid red
 
 # If any of those two labels are absent in the data, ignore the warning
 pal <- pal[!is.na(names(pal))]
@@ -441,3 +500,4 @@ ggplot(rel_abund_all, aes(x = location_id, y = rel_percent, fill = species_label
     legend.title  = element_text(face = "bold"),
     legend.key.height = unit(0.45, "cm")
   )
+
