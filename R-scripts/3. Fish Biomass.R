@@ -584,3 +584,96 @@ ggplot(summary_site, aes(x = location_id, y = mean_biomass)) +
     axis.text.x = element_text(size = 12),
     axis.title  = element_text(size = 12)
   )
+##########################################################################
+#Biomass for LB and LV at site M4, M7 and M9 using 2021-2022 data
+##########################################################################
+# --- Setup ---
+library(tidyverse)
+library(readr)
+library(janitor)
+
+# --- Load current (2021–2022) fish data ---
+currentfish <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv",
+  show_col_types = FALSE
+) %>% 
+  clean_names()
+
+# --- Filter to target sites, years, and species; keep valid weights ---
+sites_focus   <- c("M4","M7","M9")
+species_focus <- c("Labeobarbus altianalis", "Labeo victorianus")
+
+df <- currentfish %>%
+  filter(location_id %in% sites_focus,
+         sampling_year %in% c(2021, 2022),
+         fish_species %in% species_focus) %>%
+  transmute(
+    location_id,
+    sampling_year,
+    fish_species,
+    weight_g = fish_weight
+  ) %>%
+  filter(!is.na(weight_g), weight_g > 0)
+
+# --- Biomass per species × site × year  (biomass = n * mean(weight)) ---
+biomass_spp_site_year <- df %>%
+  group_by(location_id, fish_species, sampling_year) %>%
+  summarise(
+    n_fish        = n(),
+    mean_weight_g = mean(weight_g, na.rm = TRUE),
+    biomass_g     = n_fish * mean_weight_g,
+    .groups = "drop"
+  )
+
+# --- 1) TOTALS across 2021+2022 (grouped bars: species within site) ---
+totals_21_22 <- biomass_spp_site_year %>%
+  group_by(location_id, fish_species) %>%
+  summarise(biomass_g = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    location_id  = factor(location_id, levels = sites_focus),
+    fish_species = factor(fish_species, levels = species_focus)
+  )
+
+ggplot(totals_21_22, aes(x = location_id, y = biomass_g, fill = fish_species)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
+  labs(
+    title = "Fish Biomass by Species at M4, M7, M9 (Totals, 2021–2022)",
+    x = "Site",
+    y = "Biomass (g; totals across 2021–2022)",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# --- 2) Mean ± SE across years (2021 & 2022) per site × species ---
+summary_mean_se <- biomass_spp_site_year %>%
+  group_by(location_id, fish_species) %>%
+  summarise(
+    n_years      = n(),  # should be up to 2
+    mean_biomass = mean(biomass_g, na.rm = TRUE),
+    sd_biomass   = sd(biomass_g,   na.rm = TRUE),
+    se_biomass   = sd_biomass / sqrt(n_years),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    se_biomass   = replace_na(se_biomass, 0),
+    location_id  = factor(location_id, levels = sites_focus),
+    fish_species = factor(fish_species, levels = species_focus)
+  )
+
+ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_species)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
+  geom_errorbar(
+    aes(ymin = pmax(mean_biomass - se_biomass, 0),
+        ymax = mean_biomass + se_biomass),
+    width = 0.22,
+    position = position_dodge(width = 0.7)
+  ) +
+  labs(
+    title = "Fish Biomass by Species at M4, M7, M9 (Mean ± SE, 2021–2022)",
+    x = "Site",
+    y = "Biomass (g; mean ± SE across years)",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5))
