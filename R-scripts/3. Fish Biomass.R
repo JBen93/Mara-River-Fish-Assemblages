@@ -634,10 +634,34 @@ totals_21_22 <- biomass_spp_site_year %>%
     fish_species = factor(fish_species, levels = species_focus)
   )
 
-ggplot(totals_21_22, aes(x = location_id, y = biomass_g, fill = fish_species)) +
+# --- Define colours (exact hex) ---
+pal_species <- c(
+  "Labeobarbus altianalis" = "#E41A1C",  # vivid red
+  "Labeo victorianus"      = "#1F78B4"   # deep blue
+)
+
+# --- Order legend by total biomass across sites (descending) ---
+species_order <- totals_21_22 %>%
+  dplyr::group_by(fish_species) %>%
+  dplyr::summarise(total_biomass = sum(biomass_g, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::arrange(dplyr::desc(total_biomass)) %>%
+  dplyr::pull(fish_species)
+
+totals_21_22_plot <- totals_21_22 %>%
+  dplyr::mutate(
+    fish_species = factor(fish_species, levels = species_order)
+  )
+
+# --- Plot ---
+ggplot(totals_21_22_plot, aes(x = location_id, y = biomass_g, fill = fish_species)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
+  scale_fill_manual(
+    values = pal_species,          # apply your colours
+    breaks = species_order,        # legend order = highest total biomass first
+    guide  = guide_legend(reverse = FALSE)
+  ) +
   labs(
-    title = "Fish Biomass by Species at M4, M7, M9 (Totals, 2021–2022)",
+    title = "",
     x = "Site",
     y = "Biomass (g; totals across 2021–2022)",
     fill = "Species"
@@ -645,22 +669,40 @@ ggplot(totals_21_22, aes(x = location_id, y = biomass_g, fill = fish_species)) +
   theme_minimal(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5))
 
-# --- 2) Mean ± SE across years (2021 & 2022) per site × species ---
+# --- Mean ± SE across 2021–2022 (per site × species) ---
 summary_mean_se <- biomass_spp_site_year %>%
-  group_by(location_id, fish_species) %>%
-  summarise(
-    n_years      = n(),  # should be up to 2
+  dplyr::group_by(location_id, fish_species) %>%
+  dplyr::summarise(
+    n_years      = dplyr::n(),                         # up to 2 (2021, 2022)
     mean_biomass = mean(biomass_g, na.rm = TRUE),
     sd_biomass   = sd(biomass_g,   na.rm = TRUE),
     se_biomass   = sd_biomass / sqrt(n_years),
     .groups = "drop"
   ) %>%
-  mutate(
-    se_biomass   = replace_na(se_biomass, 0),
-    location_id  = factor(location_id, levels = sites_focus),
-    fish_species = factor(fish_species, levels = species_focus)
+  dplyr::mutate(
+    se_biomass   = tidyr::replace_na(se_biomass, 0),
+    location_id  = factor(location_id, levels = sites_focus)
   )
 
+# --- Define colours (exact hex) ---
+pal_species <- c(
+  "Labeobarbus altianalis" = "#E41A1C",  # vivid red
+  "Labeo victorianus"      = "#1F78B4"   # deep blue
+)
+
+# --- Order legend by higher overall mean biomass across sites (descending) ---
+species_order <- summary_mean_se %>%
+  dplyr::group_by(fish_species) %>%
+  dplyr::summarise(overall_mean = sum(mean_biomass, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::arrange(dplyr::desc(overall_mean)) %>%
+  dplyr::pull(fish_species)
+
+summary_mean_se <- summary_mean_se %>%
+  dplyr::mutate(
+    fish_species = factor(fish_species, levels = species_order)
+  )
+
+# --- Plot: Mean biomass (2021–2022) with SE ---
 ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_species)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
   geom_errorbar(
@@ -669,14 +711,17 @@ ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_speci
     width = 0.22,
     position = position_dodge(width = 0.7)
   ) +
+  scale_fill_manual(values = pal_species, breaks = species_order) +
   labs(
     title = "",
     x = "Site",
-    y = "Mean Biomass (g) 2021-2022",
+    y = "Mean Biomass (g) 2021–2022",
     fill = "Species"
   ) +
   theme_minimal(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5))
+
+
 #########################################################################
 # =========================
 # 1) Within-site tests: species differences at each site (M4–M9)
