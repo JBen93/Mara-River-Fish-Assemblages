@@ -600,7 +600,7 @@ currentfish <- readr::read_csv(
   clean_names()
 
 # --- Filter to target sites, years, and species; keep valid weights ---
-sites_focus   <- c("M4","M7","M9")
+sites_focus   <- c("M4","M5","M6","M7","M8","M9")
 species_focus <- c("Labeobarbus altianalis", "Labeo victorianus")
 
 df <- currentfish %>%
@@ -670,10 +670,183 @@ ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_speci
     position = position_dodge(width = 0.7)
   ) +
   labs(
-    title = "Fish Biomass by Species at M4, M7, M9 (Mean ± SE, 2021–2022)",
+    title = "",
+    x = "Site",
+    y = "Mean Biomass (g) 2021-2022",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5))
+#########################################################################
+# =========================
+# 1) Within-site tests: species differences at each site (M4–M9)
+# =========================
+library(dplyr)
+library(purrr)
+library(stats)
+
+sites_focus   <- c("M4","M5","M6","M7","M8","M9")
+species_focus <- c("Labeobarbus altianalis", "Labeo victorianus")
+
+# data used for tests: species × site × year biomass (2021–2022)
+test_df <- biomass_spp_site_year %>%
+  filter(location_id %in% sites_focus,
+         fish_species %in% species_focus)
+
+# Wilcoxon (Mann–Whitney) per site, then BH-adjust across sites
+wilcox_by_site <- test_df %>%
+  group_by(location_id) %>%
+  summarise(
+    test_name = "Wilcoxon rank-sum",
+    p_raw = tryCatch(
+      wilcox.test(biomass_g ~ fish_species, data = cur_data())$p.value,
+      error = function(e) NA_real_
+    ),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    p_adj = p.adjust(p_raw, method = "BH"),
+    # star codes
+    stars = case_when(
+      is.na(p_adj)         ~ "NA",
+      p_adj < 0.001        ~ "***",
+      p_adj < 0.01         ~ "**",
+      p_adj < 0.05         ~ "*",
+      TRUE                 ~ "ns"
+    ),
+    label = paste0(test_name, ": p = ", signif(p_adj, 3), " (", stars, ")")
+  )
+
+print(wilcox_by_site)
+
+# =========================
+# 2) Add p-values to the mean ± SE barplot
+# =========================
+library(ggplot2)
+
+# Compute y-positions for annotation per site
+annot_df <- summary_mean_se %>%
+  group_by(location_id) %>%
+  summarise(y_pos = max(mean_biomass + se_biomass, na.rm = TRUE) * 1.12,
+            .groups = "drop") %>%
+  left_join(wilcox_by_site, by = "location_id")
+
+# Barplot (mean ± SE across 2021–2022) with p-value annotations
+ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_species)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
+  geom_errorbar(
+    aes(ymin = pmax(mean_biomass - se_biomass, 0),
+        ymax = mean_biomass + se_biomass),
+    width = 0.22,
+    position = position_dodge(width = 0.7)
+  ) +
+  geom_text(
+    data = annot_df,
+    aes(x = location_id, y = y_pos, label = label),
+    inherit.aes = FALSE,
+    size = 4, fontface = "italic", vjust = 0
+  ) +
+  labs(
+    title = "Biomass (Mean ± SE, 2021–2022): Species Comparisons Within Sites",
     x = "Site",
     y = "Biomass (g; mean ± SE across years)",
     fill = "Species"
   ) +
   theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+#########################################################################
+# --- Required packages ---
+library(tidyverse)
+library(FSA)          # for Dunn's test
+library(multcompView) # for letter groupings
+
+# Use the biomass_spp_site_year data frame
+# Columns: location_id, fish_species, sampling_year, biomass_g
+
+sites_focus   <- c("M4","M5","M6","M7","M8","M9")
+species_focus <- c("Labeobarbus altianalis", "Labeo victorianus")
+
+# Filter to target species and sites
+test_df <- biomass_spp_site_year %>%
+  filter(location_id %in% sites_focus,
+         fish_species %in% species_focus)
+
+# ---- Run Kruskal–Wallis + Dunn’s test for each species ----
+results_list <- list()
+letters_list <- list()
+
+for (sp in species_focus) {
+  cat("\n============================\n")
+  cat("Species:", sp, "\n")
+  
+  df_sp <- test_df %>% filter(fish_species == sp)
+  
+  # Kruskal–Wallis test across sites
+  kw <- kruskal.test(biomass_g ~ location_id, data = df_sp)
+  cat("Kruskal–Wallis chi-sq =", round(kw$statistic, 3),
+      ", p =", round(kw$p.value, 4), "\n")
+  
+  # Post-hoc Dunn test if significant
+  dunn <- FSA::dunnTest(biomass_g ~ location_id, data = df_sp, method = "bh")
+  
+  # Convert to compact letters for easy visualization
+  pw <- dunn$res %>% select(Comparison, P.adj)
+  split_cmp <- strsplit(pw$Comparison, " - ")
+  pairs_mat <- do.call(rbind, split_cmp)
+  p_tab <- data.frame(g1 = pairs_mat[,1], g2 = pairs_mat[,2], p = pw$P.adj)
+  
+  all_sites <- sort(unique(c(p_tab$g1, p_tab$g2)))
+  pmat <- matrix(1, nrow = length(all_sites), ncol = length(all_sites),
+                 dimnames = list(all_sites, all_sites))
+  for (i in seq_len(nrow(p_tab))) {
+    pmat[p_tab$g1[i], p_tab$g2[i]] <- p_tab$p[i]
+    pmat[p_tab$g2[i], p_tab$g1[i]] <- p_tab$p[i]
+  }
+  letters <- multcompView::multcompLetters(pmat < 0.05)$Letters
+  letters_df <- data.frame(location_id = names(letters),
+                           letter = unname(letters))
+  
+  results_list[[sp]] <- list(kw = kw, dunn = dunn)
+  letters_list[[sp]] <- letters_df
+}
+
+# ---- Combine letters for plotting ----
+letters_all <- bind_rows(
+  letters_list[[species_focus[1]]] %>% mutate(fish_species = species_focus[1]),
+  letters_list[[species_focus[2]]] %>% mutate(fish_species = species_focus[2])
+)
+
+# ---- Compute mean ± SE for barplot ----
+summary_mean_se <- test_df %>%
+  group_by(location_id, fish_species) %>%
+  summarise(
+    n_years = n(),
+    mean_biomass = mean(biomass_g, na.rm = TRUE),
+    sd_biomass   = sd(biomass_g,   na.rm = TRUE),
+    se_biomass   = sd_biomass / sqrt(n_years),
+    .groups = "drop"
+  ) %>%
+  left_join(letters_all, by = c("location_id", "fish_species")) %>%
+  mutate(
+    location_id = factor(location_id, levels = sites_focus),
+    fish_species = factor(fish_species, levels = species_focus)
+  )
+
+# ---- Plot: Biomass across sites with letters ----
+ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_species)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
+  geom_errorbar(aes(ymin = pmax(mean_biomass - se_biomass, 0),
+                    ymax = mean_biomass + se_biomass),
+                position = position_dodge(width = 0.7), width = 0.22) +
+  geom_text(aes(label = letter, y = mean_biomass + se_biomass + 0.05 * max(mean_biomass)),
+            position = position_dodge(width = 0.7),
+            vjust = 0, size = 5, fontface = "bold") +
+  labs(
+    title = "Biomass Differences Across Sites (2021–2022)",
+    x = "Site",
+    y = "Biomass (g; mean ± SE)",
+    fill = "Species"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
