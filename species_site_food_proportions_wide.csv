@@ -1,0 +1,8 @@
+site_name,site_code,fish_species,Fungal hyphae,Non-algal biofilm,Diatoms,Amorphous detritus,Leaf detritus,Grass,Insects,Vertebrate matter,Filamentous algae
+Emarti,M4,Labeo victorianus,1,1,1,1,1,1,1,1,0
+Emarti,M4,Labeobarbus altianalis,1,1,1,1,1,1,1,1,0
+Engipai,M7,Labeo victorianus,0,1,1,1,1,1,1,1,1
+Engipai,M7,Labeobarbus altianalis,1,1,1,1,1,1,1,1,1
+NMB,M9,Labeo victorianans,0,1,0,0,0,0,0,0,0
+NMB,M9,Labeo victorianus,1,1,1,1,1,1,1,1,1
+NMB,M9,Labeobarbus altianalis,0,1,1,1,1,1,1,1,1

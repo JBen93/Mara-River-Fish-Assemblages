@@ -1,0 +1,269 @@
+site_name,site_code,fish_species,individual_code,fish_replicant,food_type_code,food_type_label,area_sum,total_area,prop
+Emarti,M4,Labeo victorianus,1,1,AD,Attached diatoms,8842.458,8842.458,1
+Emarti,M4,Labeo victorianus,1,1,DIATOM,Diatoms,252.64000000000001,252.64000000000001,1
+Emarti,M4,Labeo victorianus,1,1,INSECT,Insects,1341,1341,1
+Emarti,M4,Labeo victorianus,1,1,IO,Inorganic,1230.011,1230.011,1
+Emarti,M4,Labeo victorianus,1,1,LD,Leaf detritus,9363.597000000002,9363.597000000002,1
+Emarti,M4,Labeo victorianus,1,1,NAB,Non-attached biofilm,4071.3710000000005,4071.3710000000005,1
+Emarti,M4,Labeo victorianus,1,2,AD,Attached diatoms,71830.364,71830.364,1
+Emarti,M4,Labeo victorianus,1,2,DIATOM,Diatoms,1164.9239999999998,1164.9239999999998,1
+Emarti,M4,Labeo victorianus,1,2,INSECT,Insects,758.8870000000001,758.8870000000001,1
+Emarti,M4,Labeo victorianus,1,2,LD,Leaf detritus,34389.022,34389.022,1
+Emarti,M4,Labeo victorianus,1,2,NAB,Non-attached biofilm,7291.119,7291.119,1
+Emarti,M4,Labeo victorianus,1,3,AD,Attached diatoms,39102.64199999999,39102.64199999999,1
+Emarti,M4,Labeo victorianus,1,3,DIATOM,Diatoms,385.936,385.936,1
+Emarti,M4,Labeo victorianus,1,3,INSECT,Insects,1034.6,1034.6,1
+Emarti,M4,Labeo victorianus,1,3,LD,Leaf detritus,31092.773000000005,31092.773000000005,1
+Emarti,M4,Labeo victorianus,1,3,NAB,Non-attached biofilm,8058.7440000000015,8058.7440000000015,1
+Emarti,M4,Labeo victorianus,2,1,AD,Attached diatoms,10136,10136,1
+Emarti,M4,Labeo victorianus,2,1,VM,Vascular macrophyte,1475,1475,1
+Emarti,M4,Labeo victorianus,2,2,AD,Attached diatoms,9844.394,9844.394,1
+Emarti,M4,Labeo victorianus,2,2,NAB,Non-attached biofilm,4871.156,4871.156,1
+Emarti,M4,Labeo victorianus,2,2,VM,Vascular macrophyte,236.775,236.775,1
+Emarti,M4,Labeo victorianus,2,3,AD,Attached diatoms,7172.01,7172.01,1
+Emarti,M4,Labeo victorianus,2,3,INSECT,Insects,1453.667,1453.667,1
+Emarti,M4,Labeo victorianus,2,3,NAB,Non-attached biofilm,3695.437,3695.437,1
+Emarti,M4,Labeo victorianus,3,1,AD,Attached diatoms,30686.772000000004,30686.772000000004,1
+Emarti,M4,Labeo victorianus,3,1,DIATOM,Diatoms,1598.6919999999996,1598.6919999999996,1
+Emarti,M4,Labeo victorianus,3,1,INSECT,Insects,172.935,172.935,1
+Emarti,M4,Labeo victorianus,3,1,IO,Inorganic,1100,1100,1
+Emarti,M4,Labeo victorianus,3,1,LD,Leaf detritus,6912.931999999999,6912.931999999999,1
+Emarti,M4,Labeo victorianus,3,1,NAB,Non-attached biofilm,3369.6439999999993,3369.6439999999993,1
+Emarti,M4,Labeo victorianus,3,2,AD,Attached diatoms,27708.261999999995,27708.261999999995,1
+Emarti,M4,Labeo victorianus,3,2,DIATOM,Diatoms,2174.594000000001,2174.594000000001,1
+Emarti,M4,Labeo victorianus,3,2,INSECT,Insects,777.5160000000001,777.5160000000001,1
+Emarti,M4,Labeo victorianus,3,2,IO,Inorganic,142.199,142.199,1
+Emarti,M4,Labeo victorianus,3,2,LD,Leaf detritus,18143.083000000002,18143.083000000002,1
+Emarti,M4,Labeo victorianus,3,2,NAB,Non-attached biofilm,9922.415999999997,9922.415999999997,1
+Emarti,M4,Labeo victorianus,3,2,VM,Vascular macrophyte,415.429,415.429,1
+Emarti,M4,Labeo victorianus,3,3,AD,Attached diatoms,22537.887999999995,22537.887999999995,1
+Emarti,M4,Labeo victorianus,3,3,DIATOM,Diatoms,1074.1069999999997,1074.1069999999997,1
+Emarti,M4,Labeo victorianus,3,3,FH,Fish hair,39.3,39.3,1
+Emarti,M4,Labeo victorianus,3,3,GRASS,Grass,24.2,24.2,1
+Emarti,M4,Labeo victorianus,3,3,INSECT,Insects,169,169,1
+Emarti,M4,Labeo victorianus,3,3,LD,Leaf detritus,17303.315000000006,17303.315000000006,1
+Emarti,M4,Labeo victorianus,3,3,NAB,Non-attached biofilm,7897.306999999999,7897.306999999999,1
+Emarti,M4,Labeobarbus altianalis,1,1,AD,Attached diatoms,7633.682000000001,7633.682000000001,1
+Emarti,M4,Labeobarbus altianalis,1,1,GRASS,Grass,480.029,480.029,1
+Emarti,M4,Labeobarbus altianalis,1,1,INSECT,Insects,241.511,241.511,1
+Emarti,M4,Labeobarbus altianalis,1,1,IO,Inorganic,1282.116,1282.116,1
+Emarti,M4,Labeobarbus altianalis,1,1,LD,Leaf detritus,22801.911999999993,22801.911999999993,1
+Emarti,M4,Labeobarbus altianalis,1,1,NAB,Non-attached biofilm,6729.5120000000015,6729.5120000000015,1
+Emarti,M4,Labeobarbus altianalis,1,1,VM,Vascular macrophyte,1885.6689999999999,1885.6689999999999,1
+Emarti,M4,Labeobarbus altianalis,1,2,AD,Attached diatoms,10687.008000000002,10687.008000000002,1
+Emarti,M4,Labeobarbus altianalis,1,2,DIATOM,Diatoms,184.997,184.997,1
+Emarti,M4,Labeobarbus altianalis,1,2,GRASS,Grass,221.809,221.809,1
+Emarti,M4,Labeobarbus altianalis,1,2,INSECT,Insects,459.613,459.613,1
+Emarti,M4,Labeobarbus altianalis,1,2,IO,Inorganic,886.5229999999999,886.5229999999999,1
+Emarti,M4,Labeobarbus altianalis,1,2,LD,Leaf detritus,385.003,385.003,1
+Emarti,M4,Labeobarbus altianalis,1,2,NAB,Non-attached biofilm,7203.112,7203.112,1
+Emarti,M4,Labeobarbus altianalis,1,2,VM,Vascular macrophyte,3288.7420000000006,3288.7420000000006,1
+Emarti,M4,Labeobarbus altianalis,3,1,AD,Attached diatoms,12214.522999999996,12214.522999999996,1
+Emarti,M4,Labeobarbus altianalis,3,1,GRASS,Grass,257.549,257.549,1
+Emarti,M4,Labeobarbus altianalis,3,1,IO,Inorganic,1084.475,1084.475,1
+Emarti,M4,Labeobarbus altianalis,3,1,LD,Leaf detritus,6001.674000000001,6001.674000000001,1
+Emarti,M4,Labeobarbus altianalis,3,1,NAB,Non-attached biofilm,18091.378999999997,18091.378999999997,1
+Emarti,M4,Labeobarbus altianalis,3,1,VM,Vascular macrophyte,119.281,119.281,1
+Emarti,M4,Labeobarbus altianalis,3,2,AD,Attached diatoms,15190.521999999999,15190.521999999999,1
+Emarti,M4,Labeobarbus altianalis,3,2,GRASS,Grass,880.223,880.223,1
+Emarti,M4,Labeobarbus altianalis,3,2,IO,Inorganic,637.595,637.595,1
+Emarti,M4,Labeobarbus altianalis,3,2,LD,Leaf detritus,9511.311,9511.311,1
+Emarti,M4,Labeobarbus altianalis,3,2,NAB,Non-attached biofilm,4818.289,4818.289,1
+Emarti,M4,Labeobarbus altianalis,3,3,AD,Attached diatoms,27159.477000000006,27159.477000000006,1
+Emarti,M4,Labeobarbus altianalis,3,3,DIATOM,Diatoms,147.28,147.28,1
+Emarti,M4,Labeobarbus altianalis,3,3,GRASS,Grass,825.5,825.5,1
+Emarti,M4,Labeobarbus altianalis,3,3,INSECT,Insects,52.984,52.984,1
+Emarti,M4,Labeobarbus altianalis,3,3,IO,Inorganic,589.533,589.533,1
+Emarti,M4,Labeobarbus altianalis,3,3,LD,Leaf detritus,4779.559000000001,4779.559000000001,1
+Emarti,M4,Labeobarbus altianalis,3,3,NAB,Non-attached biofilm,30496.30100000001,30496.30100000001,1
+Emarti,M4,Labeobarbus altianalis,5,1,AD,Attached diatoms,19114.81599999999,19114.81599999999,1
+Emarti,M4,Labeobarbus altianalis,5,1,DIATOM,Diatoms,217.13099999999997,217.13099999999997,1
+Emarti,M4,Labeobarbus altianalis,5,1,FH,Fish hair,416.124,416.124,1
+Emarti,M4,Labeobarbus altianalis,5,1,INSECT,Insects,552,552,1
+Emarti,M4,Labeobarbus altianalis,5,1,IO,Inorganic,283,283,1
+Emarti,M4,Labeobarbus altianalis,5,1,LD,Leaf detritus,850.158,850.158,1
+Emarti,M4,Labeobarbus altianalis,5,1,NAB,Non-attached biofilm,10039.696000000002,10039.696000000002,1
+Emarti,M4,Labeobarbus altianalis,5,1,VM,Vascular macrophyte,1656.701,1656.701,1
+Emarti,M4,Labeobarbus altianalis,5,2,AD,Attached diatoms,19134.391999999996,19134.391999999996,1
+Emarti,M4,Labeobarbus altianalis,5,2,DIATOM,Diatoms,75.186,75.186,1
+Emarti,M4,Labeobarbus altianalis,5,2,FH,Fish hair,122.632,122.632,1
+Emarti,M4,Labeobarbus altianalis,5,2,IO,Inorganic,280.076,280.076,1
+Emarti,M4,Labeobarbus altianalis,5,2,LD,Leaf detritus,246.463,246.463,1
+Emarti,M4,Labeobarbus altianalis,5,2,NAB,Non-attached biofilm,13623.861999999997,13623.861999999997,1
+Emarti,M4,Labeobarbus altianalis,5,2,VM,Vascular macrophyte,534.5,534.5,1
+Emarti,M4,Labeobarbus altianalis,5,3,AD,Attached diatoms,6532.4479999999985,6532.4479999999985,1
+Emarti,M4,Labeobarbus altianalis,5,3,DIATOM,Diatoms,25.6,25.6,1
+Emarti,M4,Labeobarbus altianalis,5,3,FH,Fish hair,129,129,1
+Emarti,M4,Labeobarbus altianalis,5,3,NAB,Non-attached biofilm,8980.079000000002,8980.079000000002,1
+Emarti,M4,Labeobarbus altianalis,5,3,VM,Vascular macrophyte,1698.433,1698.433,1
+Engipai,M7,Labeo victorianus,2,1,AD,Attached diatoms,72019.69000000003,72019.69000000003,1
+Engipai,M7,Labeo victorianus,2,1,DIATOM,Diatoms,617.991,617.991,1
+Engipai,M7,Labeo victorianus,2,1,FA,Fish scale,262.195,262.195,1
+Engipai,M7,Labeo victorianus,2,1,GRASS,Grass,97.7,97.7,1
+Engipai,M7,Labeo victorianus,2,1,INSECT,Insects,1868.5639999999999,1868.5639999999999,1
+Engipai,M7,Labeo victorianus,2,1,IO,Inorganic,590.437,590.437,1
+Engipai,M7,Labeo victorianus,2,1,LD,Leaf detritus,38512.82199999999,38512.82199999999,1
+Engipai,M7,Labeo victorianus,2,1,NAB,Non-attached biofilm,4872.436,4872.436,1
+Engipai,M7,Labeo victorianus,2,1,VM,Vascular macrophyte,780.5409999999999,780.5409999999999,1
+Engipai,M7,Labeo victorianus,2,2,AD,Attached diatoms,96812.92100000003,96812.92100000003,1
+Engipai,M7,Labeo victorianus,2,2,DIATOM,Diatoms,599.6790000000001,599.6790000000001,1
+Engipai,M7,Labeo victorianus,2,2,FA,Fish scale,25.599,25.599,1
+Engipai,M7,Labeo victorianus,2,2,INSECT,Insects,163.599,163.599,1
+Engipai,M7,Labeo victorianus,2,2,IO,Inorganic,592.206,592.206,1
+Engipai,M7,Labeo victorianus,2,2,LD,Leaf detritus,14043.776000000005,14043.776000000005,1
+Engipai,M7,Labeo victorianus,2,2,NAB,Non-attached biofilm,2597.2509999999997,2597.2509999999997,1
+Engipai,M7,Labeo victorianus,2,3,AD,Attached diatoms,110492.45899999994,110492.45899999994,1
+Engipai,M7,Labeo victorianus,2,3,DIATOM,Diatoms,498.35200000000003,498.35200000000003,1
+Engipai,M7,Labeo victorianus,2,3,IO,Inorganic,138.849,138.849,1
+Engipai,M7,Labeo victorianus,2,3,LD,Leaf detritus,9343.623000000001,9343.623000000001,1
+Engipai,M7,Labeo victorianus,2,3,NAB,Non-attached biofilm,1536.8079999999998,1536.8079999999998,1
+Engipai,M7,Labeo victorianus,4,1,AD,Attached diatoms,55337.84400000003,55337.84400000003,1
+Engipai,M7,Labeo victorianus,4,1,DIATOM,Diatoms,1472.4709999999995,1472.4709999999995,1
+Engipai,M7,Labeo victorianus,4,1,GRASS,Grass,1420,1420,1
+Engipai,M7,Labeo victorianus,4,1,INSECT,Insects,19.925,19.925,1
+Engipai,M7,Labeo victorianus,4,1,LD,Leaf detritus,65611.365,65611.365,1
+Engipai,M7,Labeo victorianus,4,1,NAB,Non-attached biofilm,6294.029,6294.029,1
+Engipai,M7,Labeo victorianus,4,1,VM,Vascular macrophyte,105.164,105.164,1
+Engipai,M7,Labeo victorianus,4,2,AD,Attached diatoms,78950.35099999998,78950.35099999998,1
+Engipai,M7,Labeo victorianus,4,2,DIATOM,Diatoms,608.383,608.383,1
+Engipai,M7,Labeo victorianus,4,2,INSECT,Insects,1302.6789999999999,1302.6789999999999,1
+Engipai,M7,Labeo victorianus,4,2,IO,Inorganic,374.775,374.775,1
+Engipai,M7,Labeo victorianus,4,2,LD,Leaf detritus,57044.67200000004,57044.67200000004,1
+Engipai,M7,Labeo victorianus,4,2,NAB,Non-attached biofilm,7650.4929999999995,7650.4929999999995,1
+Engipai,M7,Labeo victorianus,4,2,VM,Vascular macrophyte,647.738,647.738,1
+Engipai,M7,Labeo victorianus,4,3,AD,Attached diatoms,132852.889,132852.889,1
+Engipai,M7,Labeo victorianus,4,3,DIATOM,Diatoms,311.91799999999995,311.91799999999995,1
+Engipai,M7,Labeo victorianus,4,3,INSECT,Insects,2895.573999999999,2895.573999999999,1
+Engipai,M7,Labeo victorianus,4,3,IO,Inorganic,2835.542,2835.542,1
+Engipai,M7,Labeo victorianus,4,3,LD,Leaf detritus,62783.57400000001,62783.57400000001,1
+Engipai,M7,Labeo victorianus,4,3,NAB,Non-attached biofilm,2185.1929999999998,2185.1929999999998,1
+Engipai,M7,Labeo victorianus,4,3,VM,Vascular macrophyte,154.976,154.976,1
+Engipai,M7,Labeobarbus altianalis,1,1,AD,Attached diatoms,112926.339,112926.339,1
+Engipai,M7,Labeobarbus altianalis,1,1,DIATOM,Diatoms,331.19000000000005,331.19000000000005,1
+Engipai,M7,Labeobarbus altianalis,1,1,GRASS,Grass,711.979,711.979,1
+Engipai,M7,Labeobarbus altianalis,1,1,INSECT,Insects,173.2,173.2,1
+Engipai,M7,Labeobarbus altianalis,1,1,LD,Leaf detritus,6246.3769999999995,6246.3769999999995,1
+Engipai,M7,Labeobarbus altianalis,1,1,NAB,Non-attached biofilm,11382.779000000002,11382.779000000002,1
+Engipai,M7,Labeobarbus altianalis,1,1,VM,Vascular macrophyte,2430.058,2430.058,1
+Engipai,M7,Labeobarbus altianalis,1,2,AD,Attached diatoms,83672.70100000004,83672.70100000004,1
+Engipai,M7,Labeobarbus altianalis,1,2,DIATOM,Diatoms,205.05,205.05,1
+Engipai,M7,Labeobarbus altianalis,1,2,GRASS,Grass,1395,1395,1
+Engipai,M7,Labeobarbus altianalis,1,2,LD,Leaf detritus,15239.062999999995,15239.062999999995,1
+Engipai,M7,Labeobarbus altianalis,1,2,NAB,Non-attached biofilm,16170.524,16170.524,1
+Engipai,M7,Labeobarbus altianalis,1,3,AD,Attached diatoms,108107.016,108107.016,1
+Engipai,M7,Labeobarbus altianalis,1,3,DIATOM,Diatoms,571.9510000000001,571.9510000000001,1
+Engipai,M7,Labeobarbus altianalis,1,3,FH,Fish hair,52.537,52.537,1
+Engipai,M7,Labeobarbus altianalis,1,3,GRASS,Grass,13.849,13.849,1
+Engipai,M7,Labeobarbus altianalis,1,3,LD,Leaf detritus,11104.700000000003,11104.700000000003,1
+Engipai,M7,Labeobarbus altianalis,1,3,NAB,Non-attached biofilm,16179.650999999998,16179.650999999998,1
+Engipai,M7,Labeobarbus altianalis,2,1,AD,Attached diatoms,67579.07599999999,67579.07599999999,1
+Engipai,M7,Labeobarbus altianalis,2,1,DIATOM,Diatoms,1256.453,1256.453,1
+Engipai,M7,Labeobarbus altianalis,2,1,FH,Fish hair,130,130,1
+Engipai,M7,Labeobarbus altianalis,2,1,INSECT,Insects,170.413,170.413,1
+Engipai,M7,Labeobarbus altianalis,2,1,IO,Inorganic,298.605,298.605,1
+Engipai,M7,Labeobarbus altianalis,2,1,LD,Leaf detritus,28819.35300000001,28819.35300000001,1
+Engipai,M7,Labeobarbus altianalis,2,1,NAB,Non-attached biofilm,7464.635999999999,7464.635999999999,1
+Engipai,M7,Labeobarbus altianalis,2,2,AD,Attached diatoms,90294.45899999999,90294.45899999999,1
+Engipai,M7,Labeobarbus altianalis,2,2,DIATOM,Diatoms,393.25300000000004,393.25300000000004,1
+Engipai,M7,Labeobarbus altianalis,2,2,IO,Inorganic,126.5,126.5,1
+Engipai,M7,Labeobarbus altianalis,2,2,LD,Leaf detritus,21039.11800000001,21039.11800000001,1
+Engipai,M7,Labeobarbus altianalis,2,2,LH,Liver/hemal,68.9,68.9,1
+Engipai,M7,Labeobarbus altianalis,2,2,NAB,Non-attached biofilm,12651.576,12651.576,1
+Engipai,M7,Labeobarbus altianalis,2,3,AD,Attached diatoms,42404.83900000001,42404.83900000001,1
+Engipai,M7,Labeobarbus altianalis,2,3,DIATOM,Diatoms,1121.109,1121.109,1
+Engipai,M7,Labeobarbus altianalis,2,3,FA,Fish scale,219.62,219.62,1
+Engipai,M7,Labeobarbus altianalis,2,3,FH,Fish hair,117.642,117.642,1
+Engipai,M7,Labeobarbus altianalis,2,3,INSECT,Insects,1190.7559999999999,1190.7559999999999,1
+Engipai,M7,Labeobarbus altianalis,2,3,LD,Leaf detritus,19901.915,19901.915,1
+Engipai,M7,Labeobarbus altianalis,2,3,LH,Liver/hemal,54.4,54.4,1
+Engipai,M7,Labeobarbus altianalis,2,3,NAB,Non-attached biofilm,11041.853000000005,11041.853000000005,1
+Engipai,M7,Labeobarbus altianalis,3,1,AD,Attached diatoms,74546.73300000001,74546.73300000001,1
+Engipai,M7,Labeobarbus altianalis,3,1,DIATOM,Diatoms,251.37599999999998,251.37599999999998,1
+Engipai,M7,Labeobarbus altianalis,3,1,FA,Fish scale,841.848,841.848,1
+Engipai,M7,Labeobarbus altianalis,3,1,FH,Fish hair,121,121,1
+Engipai,M7,Labeobarbus altianalis,3,1,GRASS,Grass,580.149,580.149,1
+Engipai,M7,Labeobarbus altianalis,3,1,INSECT,Insects,4589.497,4589.497,1
+Engipai,M7,Labeobarbus altianalis,3,1,LD,Leaf detritus,5113.183,5113.183,1
+Engipai,M7,Labeobarbus altianalis,3,1,NAB,Non-attached biofilm,4351.778,4351.778,1
+Engipai,M7,Labeobarbus altianalis,3,1,VM,Vascular macrophyte,476.421,476.421,1
+Engipai,M7,Labeobarbus altianalis,3,2,AD,Attached diatoms,80029.52000000003,80029.52000000003,1
+Engipai,M7,Labeobarbus altianalis,3,2,DIATOM,Diatoms,983.2769999999999,983.2769999999999,1
+Engipai,M7,Labeobarbus altianalis,3,2,FA,Fish scale,292,292,1
+Engipai,M7,Labeobarbus altianalis,3,2,GRASS,Grass,102.618,102.618,1
+Engipai,M7,Labeobarbus altianalis,3,2,INSECT,Insects,1742.1,1742.1,1
+Engipai,M7,Labeobarbus altianalis,3,2,LD,Leaf detritus,10665.882000000001,10665.882000000001,1
+Engipai,M7,Labeobarbus altianalis,3,2,NAB,Non-attached biofilm,4613.018999999999,4613.018999999999,1
+Engipai,M7,Labeobarbus altianalis,3,2,VM,Vascular macrophyte,612,612,1
+Engipai,M7,Labeobarbus altianalis,3,3,AD,Attached diatoms,70929.04999999997,70929.04999999997,1
+Engipai,M7,Labeobarbus altianalis,3,3,DIATOM,Diatoms,500.341,500.341,1
+Engipai,M7,Labeobarbus altianalis,3,3,FA,Fish scale,943.768,943.768,1
+Engipai,M7,Labeobarbus altianalis,3,3,FH,Fish hair,66.61,66.61,1
+Engipai,M7,Labeobarbus altianalis,3,3,INSECT,Insects,14039.801000000001,14039.801000000001,1
+Engipai,M7,Labeobarbus altianalis,3,3,LD,Leaf detritus,5579.119,5579.119,1
+Engipai,M7,Labeobarbus altianalis,3,3,NAB,Non-attached biofilm,2456.216,2456.216,1
+Engipai,M7,Labeobarbus altianalis,3,3,VM,Vascular macrophyte,445.36,445.36,1
+NMB,M9,Labeo victorianans,4,2,NAB,Non-attached biofilm,154.127,154.127,1
+NMB,M9,Labeo victorianus,4,1,AD,Attached diatoms,5676.070999999998,5676.070999999998,1
+NMB,M9,Labeo victorianus,4,1,DIATOM,Diatoms,271.1,271.1,1
+NMB,M9,Labeo victorianus,4,1,FH,Fish hair,2098.84,2098.84,1
+NMB,M9,Labeo victorianus,4,1,INSECT,Insects,666.6120000000001,666.6120000000001,1
+NMB,M9,Labeo victorianus,4,1,IO,Inorganic,1017.383,1017.383,1
+NMB,M9,Labeo victorianus,4,1,LD,Leaf detritus,1887.764,1887.764,1
+NMB,M9,Labeo victorianus,4,1,NAB,Non-attached biofilm,10467.608,10467.608,1
+NMB,M9,Labeo victorianus,4,1,VM,Vascular macrophyte,304.413,304.413,1
+NMB,M9,Labeo victorianus,4,2,AD,Attached diatoms,6139.268999999999,6139.268999999999,1
+NMB,M9,Labeo victorianus,4,2,DIATOM,Diatoms,109.851,109.851,1
+NMB,M9,Labeo victorianus,4,2,FH,Fish hair,905.412,905.412,1
+NMB,M9,Labeo victorianus,4,2,GRASS,Grass,58.836,58.836,1
+NMB,M9,Labeo victorianus,4,2,INSECT,Insects,958.485,958.485,1
+NMB,M9,Labeo victorianus,4,2,IO,Inorganic,396.601,396.601,1
+NMB,M9,Labeo victorianus,4,2,LD,Leaf detritus,2849.2709999999993,2849.2709999999993,1
+NMB,M9,Labeo victorianus,4,2,NAB,Non-attached biofilm,22914.435000000005,22914.435000000005,1
+NMB,M9,Labeo victorianus,4,3,AD,Attached diatoms,6069.647,6069.647,1
+NMB,M9,Labeo victorianus,4,3,DIATOM,Diatoms,396.403,396.403,1
+NMB,M9,Labeo victorianus,4,3,GRASS,Grass,1310.369,1310.369,1
+NMB,M9,Labeo victorianus,4,3,INSECT,Insects,784.2810000000001,784.2810000000001,1
+NMB,M9,Labeo victorianus,4,3,IO,Inorganic,1042.7109999999998,1042.7109999999998,1
+NMB,M9,Labeo victorianus,4,3,LD,Leaf detritus,2994.2270000000003,2994.2270000000003,1
+NMB,M9,Labeo victorianus,4,3,NAB,Non-attached biofilm,14544.633999999998,14544.633999999998,1
+NMB,M9,Labeo victorianus,4,3,VM,Vascular macrophyte,466.09,466.09,1
+NMB,M9,Labeo victorianus,5,1,AD,Attached diatoms,14419.408999999998,14419.408999999998,1
+NMB,M9,Labeo victorianus,5,1,DIATOM,Diatoms,249.329,249.329,1
+NMB,M9,Labeo victorianus,5,1,FA,Fish scale,352.11199999999997,352.11199999999997,1
+NMB,M9,Labeo victorianus,5,1,FH,Fish hair,4380.647999999999,4380.647999999999,1
+NMB,M9,Labeo victorianus,5,1,GRASS,Grass,745.4970000000001,745.4970000000001,1
+NMB,M9,Labeo victorianus,5,1,GW,Grass/wood,289.25,289.25,1
+NMB,M9,Labeo victorianus,5,1,INSECT,Insects,113.69999999999999,113.69999999999999,1
+NMB,M9,Labeo victorianus,5,1,IO,Inorganic,1217.532,1217.532,1
+NMB,M9,Labeo victorianus,5,1,LD,Leaf detritus,5378.780000000001,5378.780000000001,1
+NMB,M9,Labeo victorianus,5,1,NAB,Non-attached biofilm,9323.997000000001,9323.997000000001,1
+NMB,M9,Labeo victorianus,5,1,VM,Vascular macrophyte,826.302,826.302,1
+NMB,M9,Labeo victorianus,5,2,AD,Attached diatoms,11931.860999999999,11931.860999999999,1
+NMB,M9,Labeo victorianus,5,2,DIATOM,Diatoms,370.169,370.169,1
+NMB,M9,Labeo victorianus,5,2,FH,Fish hair,106.504,106.504,1
+NMB,M9,Labeo victorianus,5,2,GRASS,Grass,2548.997,2548.997,1
+NMB,M9,Labeo victorianus,5,2,IO,Inorganic,174.47899999999998,174.47899999999998,1
+NMB,M9,Labeo victorianus,5,2,LD,Leaf detritus,1728.6430000000003,1728.6430000000003,1
+NMB,M9,Labeo victorianus,5,2,NAB,Non-attached biofilm,21096.51200000001,21096.51200000001,1
+NMB,M9,Labeo victorianus,5,2,VM,Vascular macrophyte,968.162,968.162,1
+NMB,M9,Labeo victorianus,5,3,AD,Attached diatoms,11226.259000000002,11226.259000000002,1
+NMB,M9,Labeo victorianus,5,3,DIATOM,Diatoms,86.936,86.936,1
+NMB,M9,Labeo victorianus,5,3,FH,Fish hair,1972.025,1972.025,1
+NMB,M9,Labeo victorianus,5,3,GRASS,Grass,458.279,458.279,1
+NMB,M9,Labeo victorianus,5,3,INSECT,Insects,1431.1799999999998,1431.1799999999998,1
+NMB,M9,Labeo victorianus,5,3,IO,Inorganic,609.968,609.968,1
+NMB,M9,Labeo victorianus,5,3,LD,Leaf detritus,4417.441,4417.441,1
+NMB,M9,Labeo victorianus,5,3,NAB,Non-attached biofilm,13074.353,13074.353,1
+NMB,M9,Labeo victorianus,5,3,VM,Vascular macrophyte,457.46799999999996,457.46799999999996,1
+NMB,M9,Labeobarbus altianalis,5,1,AD,Attached diatoms,5650.419999999999,5650.419999999999,1
+NMB,M9,Labeobarbus altianalis,5,1,DIATOM,Diatoms,156.586,156.586,1
+NMB,M9,Labeobarbus altianalis,5,1,FA,Fish scale,3781.481,3781.481,1
+NMB,M9,Labeobarbus altianalis,5,1,GRASS,Grass,570.682,570.682,1
+NMB,M9,Labeobarbus altianalis,5,1,INSECT,Insects,273.025,273.025,1
+NMB,M9,Labeobarbus altianalis,5,1,IO,Inorganic,163.568,163.568,1
+NMB,M9,Labeobarbus altianalis,5,1,LD,Leaf detritus,3680.779000000002,3680.779000000002,1
+NMB,M9,Labeobarbus altianalis,5,1,NAB,Non-attached biofilm,6277.3640000000005,6277.3640000000005,1
+NMB,M9,Labeobarbus altianalis,5,1,VM,Vascular macrophyte,365.769,365.769,1
+NMB,M9,Labeobarbus altianalis,5,2,AD,Attached diatoms,4756.7699999999995,4756.7699999999995,1
+NMB,M9,Labeobarbus altianalis,5,2,LD,Leaf detritus,1463.77,1463.77,1
+NMB,M9,Labeobarbus altianalis,5,2,NAB,Non-attached biofilm,4635.138,4635.138,1

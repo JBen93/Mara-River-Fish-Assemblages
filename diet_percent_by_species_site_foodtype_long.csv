@@ -1,0 +1,52 @@
+site_name,site_code,fish_species,food_type_label,area_sum_mm2,total_area_site_species,pct
+NMB,M9,Labeo victorianans,Non-algal biofilm,154.127,154.127,100
+Emarti,M4,Labeo victorianus,Fungal hyphae,39.3,39.3,100
+Emarti,M4,Labeo victorianus,Non-algal biofilm,49177.19400000003,49177.19400000003,100
+Emarti,M4,Labeo victorianus,Diatoms,6650.892999999999,6650.892999999999,100
+Emarti,M4,Labeo victorianus,Amorphous detritus,227860.78999999983,227860.78999999983,100
+Emarti,M4,Labeo victorianus,Leaf detritus,117204.72199999995,117204.72199999995,100
+Emarti,M4,Labeo victorianus,Grass,24.2,24.2,100
+Emarti,M4,Labeo victorianus,Insects,5707.6050000000005,5707.6050000000005,99.99999999999999
+Emarti,M4,Labeo victorianus,Vertebrate matter,2127.204,2127.204,100
+Engipai,M7,Labeo victorianus,Non-algal biofilm,25136.21,25136.21,100
+Engipai,M7,Labeo victorianus,Filamentous algae,287.794,287.794,100
+Engipai,M7,Labeo victorianus,Diatoms,4108.794000000001,4108.794000000001,100
+Engipai,M7,Labeo victorianus,Amorphous detritus,546466.1539999999,546466.1539999999,100
+Engipai,M7,Labeo victorianus,Leaf detritus,247339.83199999997,247339.83199999997,100
+Engipai,M7,Labeo victorianus,Grass,1517.7,1517.7,100
+Engipai,M7,Labeo victorianus,Insects,6250.340999999997,6250.340999999997,100
+Engipai,M7,Labeo victorianus,Vertebrate matter,1688.4189999999999,1688.4189999999999,100
+NMB,M9,Labeo victorianus,Fungal hyphae,9463.429,9463.429,100
+NMB,M9,Labeo victorianus,Non-algal biofilm,91421.53900000005,91421.53900000005,99.99999999999999
+NMB,M9,Labeo victorianus,Filamentous algae,352.11199999999997,352.11199999999997,100
+NMB,M9,Labeo victorianus,Diatoms,1483.788,1483.788,99.99999999999999
+NMB,M9,Labeo victorianus,Amorphous detritus,55462.51599999997,55462.51599999997,100
+NMB,M9,Labeo victorianus,Leaf detritus,19256.126000000015,19256.126000000015,100
+NMB,M9,Labeo victorianus,Grass,5121.978,5121.978,100
+NMB,M9,Labeo victorianus,Insects,3954.2580000000003,3954.2580000000003,100
+NMB,M9,Labeo victorianus,Vertebrate matter,3022.4350000000004,3022.4350000000004,100
+Emarti,M4,Labeobarbus altianalis,Fungal hyphae,667.7560000000001,667.7560000000001,100
+Emarti,M4,Labeobarbus altianalis,Non-algal biofilm,99982.23000000001,99982.23000000001,100
+Emarti,M4,Labeobarbus altianalis,Diatoms,650.1940000000001,650.1940000000001,100
+Emarti,M4,Labeobarbus altianalis,Amorphous detritus,117666.86799999994,117666.86799999994,100
+Emarti,M4,Labeobarbus altianalis,Leaf detritus,44576.08000000002,44576.08000000002,100
+Emarti,M4,Labeobarbus altianalis,Grass,2665.11,2665.11,100
+Emarti,M4,Labeobarbus altianalis,Insects,1306.108,1306.108,100
+Emarti,M4,Labeobarbus altianalis,Vertebrate matter,9183.326,9183.326,100
+Engipai,M7,Labeobarbus altianalis,Fungal hyphae,487.78900000000004,487.78900000000004,100
+Engipai,M7,Labeobarbus altianalis,Non-algal biofilm,86312.03200000006,86312.03200000006,100
+Engipai,M7,Labeobarbus altianalis,Filamentous algae,2297.236,2297.236,100
+Engipai,M7,Labeobarbus altianalis,Diatoms,5614.000000000001,5614.000000000001,100
+Engipai,M7,Labeobarbus altianalis,Amorphous detritus,730489.733,730489.733,100
+Engipai,M7,Labeobarbus altianalis,Leaf detritus,123708.71000000004,123708.71000000004,100
+Engipai,M7,Labeobarbus altianalis,Grass,2803.5950000000003,2803.5950000000003,99.99999999999999
+Engipai,M7,Labeobarbus altianalis,Insects,21905.767000000003,21905.767000000003,99.99999999999999
+Engipai,M7,Labeobarbus altianalis,Vertebrate matter,3963.839,3963.839,100
+NMB,M9,Labeobarbus altianalis,Non-algal biofilm,10912.501999999997,10912.501999999997,100
+NMB,M9,Labeobarbus altianalis,Filamentous algae,3781.481,3781.481,100
+NMB,M9,Labeobarbus altianalis,Diatoms,156.586,156.586,100
+NMB,M9,Labeobarbus altianalis,Amorphous detritus,10407.189999999999,10407.189999999999,100
+NMB,M9,Labeobarbus altianalis,Leaf detritus,5144.549000000002,5144.549000000002,100
+NMB,M9,Labeobarbus altianalis,Grass,570.682,570.682,100
+NMB,M9,Labeobarbus altianalis,Insects,273.025,273.025,100
+NMB,M9,Labeobarbus altianalis,Vertebrate matter,365.769,365.769,100

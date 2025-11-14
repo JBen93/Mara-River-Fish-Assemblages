@@ -1,0 +1,52 @@
+site_name,site_code,fish_species,food_type_label,mean_prop,sd_prop,n_fish
+Emarti,M4,Labeo victorianus,Fungal hyphae,1,NA,1
+Emarti,M4,Labeo victorianus,Non-algal biofilm,1,0,3
+Emarti,M4,Labeo victorianus,Diatoms,1,0,3
+Emarti,M4,Labeo victorianus,Amorphous detritus,1,0,3
+Emarti,M4,Labeo victorianus,Leaf detritus,1,0,3
+Emarti,M4,Labeo victorianus,Grass,1,NA,1
+Emarti,M4,Labeo victorianus,Insects,1,0,3
+Emarti,M4,Labeo victorianus,Vertebrate matter,1,0,2
+Emarti,M4,Labeobarbus altianalis,Fungal hyphae,1,0,3
+Emarti,M4,Labeobarbus altianalis,Non-algal biofilm,1,0,3
+Emarti,M4,Labeobarbus altianalis,Diatoms,1,0,3
+Emarti,M4,Labeobarbus altianalis,Amorphous detritus,1,0,3
+Emarti,M4,Labeobarbus altianalis,Leaf detritus,1,0,3
+Emarti,M4,Labeobarbus altianalis,Grass,1,0,3
+Emarti,M4,Labeobarbus altianalis,Insects,1,0,3
+Emarti,M4,Labeobarbus altianalis,Vertebrate matter,1,0,3
+Engipai,M7,Labeo victorianus,Non-algal biofilm,1,0,3
+Engipai,M7,Labeo victorianus,Filamentous algae,1,0,2
+Engipai,M7,Labeo victorianus,Diatoms,1,0,3
+Engipai,M7,Labeo victorianus,Amorphous detritus,1,0,3
+Engipai,M7,Labeo victorianus,Leaf detritus,1,0,3
+Engipai,M7,Labeo victorianus,Grass,1,NA,1
+Engipai,M7,Labeo victorianus,Insects,1,0,3
+Engipai,M7,Labeo victorianus,Vertebrate matter,1,0,3
+Engipai,M7,Labeobarbus altianalis,Fungal hyphae,1,0,2
+Engipai,M7,Labeobarbus altianalis,Non-algal biofilm,1,0,3
+Engipai,M7,Labeobarbus altianalis,Filamentous algae,1,0,3
+Engipai,M7,Labeobarbus altianalis,Diatoms,1,0,3
+Engipai,M7,Labeobarbus altianalis,Amorphous detritus,1,0,3
+Engipai,M7,Labeobarbus altianalis,Leaf detritus,1,0,3
+Engipai,M7,Labeobarbus altianalis,Grass,1,0,3
+Engipai,M7,Labeobarbus altianalis,Insects,1,0,3
+Engipai,M7,Labeobarbus altianalis,Vertebrate matter,1,0,3
+NMB,M9,Labeo victorianans,Non-algal biofilm,1,NA,1
+NMB,M9,Labeo victorianus,Fungal hyphae,1,0,3
+NMB,M9,Labeo victorianus,Non-algal biofilm,1,0,3
+NMB,M9,Labeo victorianus,Filamentous algae,1,NA,1
+NMB,M9,Labeo victorianus,Diatoms,1,0,3
+NMB,M9,Labeo victorianus,Amorphous detritus,1,0,3
+NMB,M9,Labeo victorianus,Leaf detritus,1,0,3
+NMB,M9,Labeo victorianus,Grass,1,0,3
+NMB,M9,Labeo victorianus,Insects,1,0,3
+NMB,M9,Labeo victorianus,Vertebrate matter,1,0,3
+NMB,M9,Labeobarbus altianalis,Non-algal biofilm,1,0,2
+NMB,M9,Labeobarbus altianalis,Filamentous algae,1,NA,1
+NMB,M9,Labeobarbus altianalis,Diatoms,1,NA,1
+NMB,M9,Labeobarbus altianalis,Amorphous detritus,1,0,2
+NMB,M9,Labeobarbus altianalis,Leaf detritus,1,0,2
+NMB,M9,Labeobarbus altianalis,Grass,1,NA,1
+NMB,M9,Labeobarbus altianalis,Insects,1,NA,1
+NMB,M9,Labeobarbus altianalis,Vertebrate matter,1,NA,1
