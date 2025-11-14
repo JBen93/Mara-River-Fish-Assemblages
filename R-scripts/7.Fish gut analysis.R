@@ -422,9 +422,28 @@ adonis_result <- adonis2(
 
 print(adonis_result)
 
-adonis2(dist_bc ~ fish_species + site_code + fish_species:site_code,
-        data = meta, by = "margin")
+# PERMANOVA with separate tests for each term
+adon_terms <- adonis2(
+  dist_bc ~ fish_species * site_code,
+  data = meta,
+  permutations = 999,
+  by = "terms"   # tests each term separately
+)
+print(adon_terms)
 
+#test for the food type variation
+site_kw_results <- rep_prop %>%
+  group_by(food_type) %>%
+  kruskal_test(proportion ~ site_code)
+print(site_kw_results)
+
+# Dunn post-hoc tests, Bonferroni or FDR corrected
+site_posthoc <- rep_prop %>%
+  group_by(food_type) %>%
+  dunn_test(proportion ~ site_code, p.adjust.method = "bonferroni") %>%
+  ungroup()
+
+print(site_posthoc, n = Inf)
 
 ###########################################################
 # 6. CHECK HOMOGENEITY OF MULTIVARIATE DISPERSION (BETADISPER)
@@ -471,3 +490,15 @@ site_kw_results <- rep_prop %>%
 
 print(site_kw_results)
 
+library(rstatix)
+
+# Post-hoc pairwise comparisons (Dunn test) after Kruskal–Wallis
+site_posthoc <- rep_prop %>%
+  group_by(food_type) %>%
+  dunn_test(proportion ~ site_code, p.adjust.method = "bonferroni") %>%
+  ungroup()
+
+View(site_posthoc)
+
+
+###########################################################
