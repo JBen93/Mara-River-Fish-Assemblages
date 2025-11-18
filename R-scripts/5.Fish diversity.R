@@ -251,6 +251,37 @@ test_label <- sprintf("Wilcoxon rank-sum: p = %.3f", p_glob)
 
 # For positioning the annotation
 y_top <- max(div_m$shannon_H, na.rm = TRUE)
+# -------- Global significance test (Past vs Current) --------
+# Non-parametric Wilcoxon rank-sum (Mann–Whitney)
+
+library(rstatix)
+
+# Tidy Wilcoxon test between periods for Shannon H'
+global_test <- div_m %>%
+  wilcox_test(shannon_H ~ period, detailed = TRUE)
+
+global_test
+# This gives a tibble with:
+# .y., group1, group2, n1, n2, statistic, p, method, alternative
+
+# Extract statistic and p-value
+W_glob <- global_test$statistic[1]
+p_glob <- global_test$p[1]
+
+# Optional: round nicely for reporting
+W_glob_round <- round(W_glob, 2)
+p_glob_round <- signif(p_glob, 3)
+
+# Label to use in the plot (or in text)
+test_label <- sprintf("Wilcoxon rank-sum: W = %.2f, p = %.3f",
+                      W_glob_round, p_glob_round)
+
+# For positioning the annotation in the plot
+y_top <- max(div_m$shannon_H, na.rm = TRUE)
+
+# You can check the test results in the console:
+print(global_test)
+print(test_label)
 
 # -------- Plot --------
 pd  <- position_dodge(width = 0.65)
