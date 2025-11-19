@@ -334,3 +334,210 @@ means_by_trophic_site <- df %>%
   )
 cat("\nMeans by trophic group and site (all points):\n"); print(means_by_trophic_site)
 ############################################################################
+# ==============================
+# δ13C box + dot plot by species
+# ==============================
+
+remove(list = ls())
+# renv::restore()
+
+# ---- Packages ----
+library(tidyverse)
+library(readr)
+
+# ---- Load data ----
+raw <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
+  show_col_types = FALSE
+)
+
+# ---- Targets ----
+target_species <- c("Labeobarbus altianalis", "Labeo victorianus")
+target_sites   <- paste0("M", 4:9)
+
+df <- raw %>%
+  filter(Fish_species %in% target_species,
+         Site_code   %in% target_sites)
+
+# ---- Helper to pick the δ13C column robustly ----
+pick_first_col <- function(dat, candidates) {
+  hit <- intersect(candidates, names(dat))
+  if (!length(hit)) stop("None of these columns were found: ",
+                         paste(candidates, collapse = " | "))
+  hit[[1]]
+}
+
+c13_name <- pick_first_col(df, c(
+  "d13C (permil, vs VPDB)",
+  "Normalized d13C",
+  "d13C (‰, vs VPDB)",
+  "d13C"
+))
+
+# ---- Prepare data for plotting ----
+sp_levels <- c("Labeobarbus altianalis", "Labeo victorianus")
+
+df <- df %>%
+  mutate(
+    d13C_use    = .data[[c13_name]],
+    Fish_species = factor(Fish_species, levels = sp_levels)
+  ) %>%
+  drop_na(d13C_use)
+
+# Optional: quick check of sample sizes and means
+df %>%
+  group_by(Fish_species) %>%
+  summarise(
+    n       = n(),
+    mean_d13C = mean(d13C_use, na.rm = TRUE),
+    sd_d13C   = sd(d13C_use, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  print()
+
+# ---- Plot: horizontal boxplot + jitter + mean point ----
+p <- ggplot(df, aes(x = d13C_use, y = Fish_species)) +
+  # boxplot for distribution
+  geom_boxplot(
+    width = 0.5,
+    alpha = 0.4,
+    outlier.shape = NA,
+    fill = "grey80",
+    color = "black"
+  ) +
+  # jittered points (individual fish)
+  geom_jitter(
+    height = 0.12,
+    size   = 2,
+    alpha  = 0.7
+  ) +
+  # mean as a distinct dot
+  stat_summary(
+    fun   = mean,
+    geom  = "point",
+    shape = 21,
+    size  = 3.5,
+    fill  = "black",
+    color = "white"
+  ) +
+  labs(
+    x = expression(paste(delta^13, "C (‰, vs VPDB)")),
+    y = "Fish species"
+  ) +
+  theme_bw(base_size = 13) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    axis.title.y       = element_text(face = "bold"),
+    axis.title.x       = element_text(face = "bold")
+  )
+
+print(p)
+############################################################################
+# ==============================
+# δ15N box + dot plot by species (vertical)
+# ==============================
+
+remove(list = ls())
+# renv::restore()
+
+# ---- Packages ----
+library(tidyverse)
+library(readr)
+
+# ---- Load data ----
+raw <- readr::read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
+  show_col_types = FALSE
+)
+
+# ---- Targets ----
+target_species <- c("Labeobarbus altianalis", "Labeo victorianus")
+target_sites   <- paste0("M", 4:9)
+
+df <- raw %>%
+  filter(Fish_species %in% target_species,
+         Site_code   %in% target_sites)
+
+# ---- Helper to pick the δ15N column robustly ----
+pick_first_col <- function(dat, candidates) {
+  hit <- intersect(candidates, names(dat))
+  if (!length(hit)) stop("None of these columns were found: ",
+                         paste(candidates, collapse = " | "))
+  hit[[1]]
+}
+
+n15_name <- pick_first_col(df, c(
+  "d15N (permil, vs AIR)",
+  "d15N (‰, vs AIR)",
+  "Normalized d15N",
+  "d15N"
+))
+
+# ---- Prepare data for plotting ----
+sp_levels <- c("Labeobarbus altianalis", "Labeo victorianus")
+
+df <- df %>%
+  mutate(
+    d15N_use     = .data[[n15_name]],
+    Fish_species = factor(Fish_species, levels = sp_levels)
+  ) %>%
+  drop_na(d15N_use)
+
+# ---- Quick check of sample sizes and means ----
+df %>%
+  group_by(Fish_species) %>%
+  summarise(
+    n        = n(),
+    mean_d15N = mean(d15N_use, na.rm = TRUE),
+    sd_d15N   = sd(d15N_use, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  print()
+
+# ---- Plot: vertical boxplot + jitter + mean point ----
+p <- ggplot(df, aes(x = Fish_species, y = d15N_use)) +
+  
+  # boxplot
+  geom_boxplot(
+    width = 0.55,
+    alpha = 0.4,
+    outlier.shape = NA,
+    fill = "grey80",
+    color = "black"
+  ) +
+  
+  # jittered individual points
+  geom_jitter(
+    width  = 0.12,
+    size   = 2,
+    alpha  = 0.7
+  ) +
+  
+  # mean point
+  stat_summary(
+    fun   = mean,
+    geom  = "point",
+    shape = 21,
+    size  = 3.8,
+    fill  = "black",
+    color = "white"
+  ) +
+  
+  # labels
+  labs(
+    x = "Fish species",
+    y = expression(paste(delta^15, "N (‰, vs AIR)"))
+  ) +
+  
+  # theme
+  theme_bw(base_size = 13) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor   = element_blank(),
+    axis.title.x       = element_text(face = "bold"),
+    axis.title.y       = element_text(face = "bold")
+  )
+
+print(p)
+############################################################################
