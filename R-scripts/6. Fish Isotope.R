@@ -256,237 +256,341 @@ p_niche <- ggplot() +
 
 print(p_niche)
 ##############################################################################
+# ============================================================
+# SIBER vignette workflow ADAPTED to YOUR data
+# Communities = Sites (M4–M9)
+# Groups      = Species (2 fish species)
+# ============================================================
 
-# ===============================================================
-# Fish isotopes in the Mara River
-# Bayesian SEA (SEAb) density plots for isotopic niche width
-# - NO SEAc
-# - NO ellipses on the isotope plot
-# - NO Layman metrics
-# ===============================================================
-
-# Optional: clean environment
 rm(list = ls())
 graphics.off()
+set.seed(1)
 
-# ---- Packages ----
 library(tidyverse)
 library(readr)
 library(SIBER)
+library(hdrcde)
 
-# ---- Load data ----
+# ---------------------------
+# 1) LOAD YOUR DATA
+# ---------------------------
 raw <- readr::read_csv(
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
   show_col_types = FALSE
 )
 
-# ---- Targets ----
-target_species <- c("Labeobarbus altianalis", "Labeo victorianus")
-target_sites   <- paste0("M", 4:9)
+# ---------------------------
+# 2) TARGETS (match your setup)
+# ---------------------------
+species_levels <- c("Labeobarbus altianalis", "Labeo victorianus")  # group order
+site_levels    <- paste0("M", 4:9)                                  # community order
 
-df <- raw %>%
-  filter(
-    Fish_species %in% target_species,
-    Site_code    %in% target_sites
-  )
-
-# ---- Robust column chooser (handles exact header + variants) ----
+# ---------------------------
+# 3) HELPERS
+# ---------------------------
 pick_first_col <- function(dat, candidates) {
   hit <- intersect(candidates, names(dat))
-  if (length(hit) == 0) {
-    stop("None of these columns were found: ",
-         paste(candidates, collapse = " | "))
-  }
+  if (length(hit) == 0) stop("None of these columns were found: ", paste(candidates, collapse = " | "))
   hit[[1]]
 }
 
-c13_name <- pick_first_col(df, c(
+# Fix for SIBER sometimes returning SEA.B with NULL colnames:
+# Create "community.group" labels in the SAME order as SIBER output.
+label_seab_cols_if_missing <- function(SEA.B, siber_obj, min_n) {
+  if (!is.null(colnames(SEA.B))) return(as.matrix(SEA.B))
+  
+  ss <- siber_obj$sample.sizes
+  present <- which(!is.na(ss) & ss >= min_n, arr.ind = TRUE)
+  
+  if (nrow(present) == 0) stop("No valid community×group combos with n >= ", min_n)
+  
+  # SIBER order is community-major then group
+  present <- present[order(present[, 1], present[, 2]), , drop = FALSE]
+  labels  <- apply(present, 1, function(ix) paste(ix[1], ix[2], sep = "."))
+  
+  if (ncol(SEA.B) != length(labels)) {
+    cat("\nDEBUG mismatch in SEA.B labeling\n")
+    cat("ncol(SEA.B) =", ncol(SEA.B), "\n")
+    cat("length(labels) =", length(labels), "\n")
+    cat("labels:\n"); print(labels)
+    stop("Cannot label SEA.B: mismatch between SEA.B columns and present community×group combos.\n",
+         "Try raising min_n (e.g., 6–10) or check sample sizes.")
+  }
+  
+  SEA.B <- as.matrix(SEA.B)
+  colnames(SEA.B) <- labels
+  SEA.B
+}
+
+# Lookup: "community.group" -> Site + Species labels
+make_lookup <- function(col_ids, site_levels, species_levels) {
+  tmp <- strsplit(col_ids, "\\.")
+  community <- as.integer(vapply(tmp, `[`, "", 1))
+  group     <- as.integer(vapply(tmp, `[`, "", 2))
+  
+  tibble(
+    group_id     = col_ids,
+    community    = community,
+    group        = group,
+    Site_code    = site_levels[community],
+    Fish_species = species_levels[group]
+  )
+}
+
+# ---------------------------
+# 4) FILTER + CLEAN ISOTOPES
+# ---------------------------
+df0 <- raw %>%
+  dplyr::filter(Fish_species %in% species_levels,
+                Site_code %in% site_levels)
+
+c13_name <- pick_first_col(df0, c(
   "d13C (permil, vs VPDB)",
   "Normalized d13C",
   "d13C (‰, vs VPDB)",
   "d13C", "d13C_corrected", "C13"
 ))
-n15_name <- pick_first_col(df, c(
+n15_name <- pick_first_col(df0, c(
   "d15N (permil, vs AIR)",
   "d15N (‰, vs AIR)",
   "d15N", "N15"
 ))
 
-# ---- Construct analysis columns & basic QC ----
-df <- df %>%
-  mutate(
-    d13C_use = .data[[c13_name]],
-    d15N_use = .data[[n15_name]]
+df <- df0 %>%
+  transmute(
+    Site_code    = as.character(Site_code),
+    Fish_species = as.character(Fish_species),
+    d13C_use     = suppressWarnings(as.numeric(.data[[c13_name]])),
+    d15N_use     = suppressWarnings(as.numeric(.data[[n15_name]]))
   ) %>%
-  drop_na(d13C_use, d15N_use)
+  drop_na(Site_code, Fish_species, d13C_use, d15N_use)
 
-# ---- Ensure minimum sample size per species × site (n >= 3) ----
+# ---------------------------
+# 5) MINIMUM SAMPLE SIZE FILTER
+# ---------------------------
+min_n <- 5  # recommended; can drop to 3 if absolutely necessary
+
 df_ok <- df %>%
   group_by(Site_code, Fish_species) %>%
-  filter(n() >= 3) %>%
+  filter(n() >= min_n) %>%
   ungroup()
 
-if (nrow(df_ok) == 0) stop("No species × site groups with n >= 3 after filtering.")
+if (nrow(df_ok) == 0) stop("No Site×Species groups with n >= ", min_n, ". Try min_n <- 3 if needed.")
 
-# ---- Encode for SIBER object ----
-# group = species, community = site
-df_siber <- df_ok %>%
+# stable coding (communities=sites; groups=species)
+df_ok <- df_ok %>%
   mutate(
-    group     = as.numeric(as.factor(Fish_species)),
-    community = as.numeric(as.factor(Site_code))
-  ) %>%
+    Site_code    = factor(Site_code, levels = site_levels),
+    Fish_species = factor(Fish_species, levels = species_levels),
+    community    = as.integer(Site_code),
+    group        = as.integer(Fish_species)
+  )
+
+# SIBER input frame
+siber_df <- df_ok %>%
   transmute(
     iso1      = d13C_use,
     iso2      = d15N_use,
-    group,
-    community
-  )
-
-siber_obj <- createSiberObject(as.data.frame(df_siber))
-
-# ---- Optional: ML group metrics just to get clean group labels ----
-group_ML <- groupMetricsML(siber_obj)
-# Columns of group_ML correspond to groups (species × site) in the same order
-group_labels <- colnames(group_ML)
-
-# ---- Bayesian SIBER model settings ----
-set.seed(1)
-
-parms <- list(
-  n.iter   = 2 * 10^4,
-  n.burnin = 1 * 10^3,
-  n.thin   = 10,
-  n.chains = 2
-)
-
-priors <- list(
-  R      = diag(2),
-  k      = 2,
-  tau.mu = 1.0E-3
-)
-
-# ---- Fit Bayesian ellipses (posterior) ----
-ellipses.posterior <- siberMVN(siber_obj, parms, priors)
-
-# ---- Bayesian SEAb: posterior Standard Ellipse Area per group ----
-# This is the CORRECT function for SEA.B in SIBER
-SEA_B <- siberEllipses(ellipses.posterior)
-# SEA_B = matrix: rows = posterior draws, cols = groups
-# give columns informative names
-colnames(SEA_B) <- group_labels
-
-# ---- Tidy SEA_B for density plots ----
-SEA_df <- SEA_B %>%
-  as.data.frame() %>%
-  mutate(draw = row_number()) %>%
-  pivot_longer(
-    cols      = -draw,
-    names_to  = "group_id",
-    values_to = "SEA"
-  )
-
-# ---- Build a mapping from group_id to Site_code & Fish_species ----
-# We use the original df_ok with numeric group/community codes
-group_map <- df_ok %>%
-  mutate(
-    group     = as.numeric(as.factor(Fish_species)),
-    community = as.numeric(as.factor(Site_code))
+    group     = group,
+    community = community
   ) %>%
-  distinct(community, group, Site_code, Fish_species) %>%
-  arrange(community, group)
+  as.data.frame()
 
-# SIBER's internal order is "community.group"
-# e.g. "1.1", "1.2", "2.1", ...
-expected_group_ids <- group_map %>%
-  mutate(group_id = paste(community, group, sep = ".")) %>%
-  pull(group_id)
+# ---------------------------
+# 6) CREATE SIBER OBJECT (this replaces siber.example)
+# ---------------------------
+siber.example <- createSiberObject(siber_df)
 
-# Check: these should match the column names of SEA_B / group_labels
-# print(group_labels)
-# print(expected_group_ids)
+cat("\nSample sizes (rows=community/site index, cols=group/species index):\n")
+print(siber.example$sample.sizes)
+cat("\nCommunity index -> Site:\n"); print(tibble(community = seq_along(site_levels), Site = site_levels))
+cat("\nGroup index -> Species:\n");   print(tibble(group = seq_along(species_levels), Species = species_levels))
 
-# Join mapping into SEA_df
-SEA_df <- SEA_df %>%
-  left_join(
-    group_map %>%
-      mutate(group_id = paste(community, group, sep = ".")),
-    by = "group_id"
-  )
+# ============================================================
+# 7) PLOTS (same as vignette, using your siber.example object)
+# ============================================================
 
-# ---- Summarise SEA posterior: median, mode, 95% credible interval ----
-mode_est <- function(x) {
-  d <- density(x)
-  d$x[which.max(d$y)]
-}
+community.hulls.args <- list(col = 1, lty = 1, lwd = 1)
+group.ellipses.args  <- list(n = 100, p.interval = 0.95, lty = 1, lwd = 2)
+group.hulls.args     <- list(lty = 2, col = "grey20")
 
-SEA_summary <- SEA_df %>%
-  group_by(Site_code, Fish_species) %>%
-  summarise(
-    n_draws = n(),
-    SEA_mode   = mode_est(SEA),
-    SEA_median = median(SEA),
-    SEA_lower95 = quantile(SEA, 0.025),
-    SEA_upper95 = quantile(SEA, 0.975),
-    .groups = "drop"
-  )
-
-cat("\nBayesian SEA (SEAb) summary per species × site:\n")
-print(SEA_summary)
-
-# ---- Plot: SEA posterior density curves (isotopic niche width) ----
-SEA_df_plot <- SEA_df %>%
-  filter(!is.na(Site_code), !is.na(Fish_species)) %>%
-  mutate(
-    Site_code    = factor(Site_code,    levels = paste0("M", 4:9)),
-    Fish_species = factor(Fish_species)
-  )
-
-p_SEA <- ggplot(SEA_df_plot,
-                aes(x = SEA, fill = Fish_species, colour = Fish_species)) +
-  geom_density(alpha = 0.30) +
-  facet_wrap(~ Site_code, scales = "free") +
-  labs(
-    title = "Bayesian posterior distribution of Standard Ellipse Area (SEAb)",
-    x     = expression(paste("Standard Ellipse Area (", "\u2030"^2, ")")),
-    y     = "Posterior density"
-  ) +
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position  = "bottom",
-    legend.title     = element_text(size = 11),
-    legend.text      = element_text(size = 10),
-    plot.title       = element_text(hjust = 0.5, face = "bold"),
-    strip.background = element_rect(fill = "grey92"),
-    strip.text       = element_text(face = "bold")
-  )
-
-print(p_SEA)
-
-sp_cols <- c(
-  "Labeo victorianus"      = "#1F78B4",
-  "Labeobarbus altianalis" = "#E41A1C"
+par(mfrow = c(1,1))
+plotSiberObject(
+  siber.example,
+  ax.pad = 2,
+  hulls = FALSE, community.hulls.args = community.hulls.args,
+  ellipses = TRUE, group.ellipses.args = group.ellipses.args,
+  group.hulls = TRUE, group.hulls.args = group.hulls.args,
+  bty = "L",
+  iso.order = c(1,2),
+  xlab = expression({delta}^13*C~"‰"),
+  ylab = expression({delta}^15*N~"‰")
 )
 
-p_SEA_col <- ggplot(SEA_df_plot,
-                    aes(x = SEA, fill = Fish_species, colour = Fish_species)) +
-  geom_density(alpha = 0.30) +
-  scale_fill_manual(values = sp_cols) +
-  scale_colour_manual(values = sp_cols) +
-  facet_wrap(~ Site_code, scales = "free") +
-  labs(
-    title = "Bayesian posterior distribution of Standard Ellipse Area (SEAb)",
-    x     = expression(paste("Standard Ellipse Area (", "\u2030"^2, ")")),
-    y     = "Posterior density"
-  ) +
-  theme_bw(base_size = 12) +
-  theme(
-    legend.position  = "bottom",
-    legend.title     = element_text(size = 11),
-    legend.text      = element_text(size = 10),
-    plot.title       = element_text(hjust = 0.5, face = "bold"),
-    strip.background = element_rect(fill = "grey92"),
-    strip.text       = element_text(face = "bold")
-  )
-print(p_SEA_col)
-#arrange the Leged to start with Labeobarbus altianalis
-p_SEA_col + guides(fill = guide_legend(reverse = TRUE), colour = guide_legend(reverse = TRUE))
+# smaller points plot (like vignette)
+group.hull.args <- list(lty = 2, col = "grey20")
+par(mfrow = c(1,1))
+plotSiberObject(
+  siber.example,
+  ax.pad = 2,
+  hulls = FALSE, community.hulls.args,
+  ellipses = FALSE, group.ellipses.args,
+  group.hulls = FALSE, group.hull.args,
+  bty = "L",
+  iso.order = c(1,2),
+  xlab = expression({delta}^13*C~"‰"),
+  ylab = expression({delta}^15*N~"‰"),
+  cex  = 0.5
+)
+
+# ============================================================
+# 8) >>> THIS IS THE BLOCK YOU SAID WAS MISSING <<<
+#    GROUP ML METRICS + ELLIPSES + COMMUNITY METRICS
+# ============================================================
+
+# Calculate summary statistics for each group: TA, SEA and SEAc
+group.ML <- groupMetricsML(siber.example)
+cat("\nGroup-level ML metrics (TA, SEA, SEAc). Columns = community.group:\n")
+print(group.ML)
+
+# Add a prediction ellipse
+plotGroupEllipses(siber.example, n = 100, p.interval = 0.95,
+                  lty = 1, lwd = 2)
+
+# Add CI around bivariate means
+plotGroupEllipses(siber.example, n = 100, p.interval = 0.95, ci.mean = TRUE,
+                  lty = 1, lwd = 2)
+
+# Plot convex hulls (community level), like vignette
+par(mfrow = c(1,1))
+plotSiberObject(
+  siber.example,
+  ax.pad = 2,
+  hulls = TRUE, community.hulls.args,
+  ellipses = FALSE, group.ellipses.args,
+  group.hulls = FALSE, group.hull.args,
+  bty = "L",
+  iso.order = c(1,2),
+  xlab = expression({delta}^13*C~"‰"),
+  ylab = expression({delta}^15*N~"‰"),
+  cex  = 0.5
+)
+
+# Optionally add CI ellipses on top of hull plot
+plotGroupEllipses(siber.example, n = 100, p.interval = 0.95,
+                  ci.mean = TRUE, lty = 1, lwd = 2)
+
+# Community-level Layman metrics
+community.ML <- communityMetricsML(siber.example)
+cat("\nCommunity-level ML Layman metrics (per community/site index):\n")
+print(community.ML)
+
+# ============================================================
+# 9) BAYESIAN SETTINGS + POSTERIOR (same as vignette)
+#    (You can keep this if you want the calculations; plots are optional)
+# ============================================================
+
+parms <- list()
+parms$n.iter   <- 2 * 10^4
+parms$n.burnin <- 1 * 10^3
+parms$n.thin   <- 10
+parms$n.chains <- 2
+
+priors <- list()
+priors$R      <- 1 * diag(2)
+priors$k      <- 2
+priors$tau.mu <- 1.0E-3
+
+ellipses.posterior <- siberMVN(siber.example, parms, priors)
+
+# SEA.B (posterior draws)
+SEA.B <- siberEllipses(ellipses.posterior)
+SEA.B <- label_seab_cols_if_missing(SEA.B, siber.example, min_n)
+
+# Create nice readable labels (Site | Species) in the same order as SEA.B
+lookup <- make_lookup(colnames(SEA.B), site_levels, species_levels)
+xticks <- paste0(lookup$Site_code, " | ", lookup$Fish_species)
+
+# ---- OPTIONAL PLOT (you said you don't need the curves; so it’s optional) ----
+# siberDensityPlot(SEA.B, xticklabels = xticks,
+#                  xlab = "Site | Species",
+#                  ylab = expression("Standard Ellipse Area " ("‰"^2)),
+#                  bty = "L", las = 2,
+#                  main = "SIBER ellipses on each group (SEA.B)")
+
+# Add red x's for ML SEAc (matched safely)
+# (This still computes even if you don’t plot)
+seac_vec <- group.ML["SEAc", ]
+seac_vec <- seac_vec[match(colnames(SEA.B), colnames(group.ML))]
+
+# if you plot, then uncomment:
+# points(1:ncol(SEA.B), seac_vec, col = "red", pch = "x", lwd = 2)
+
+# Credible intervals and modes (CALCULATIONS)
+cr.p <- c(0.95, 0.99)
+
+SEA.B.credibles <- lapply(
+  as.data.frame(SEA.B),
+  function(x, ...) { hdrcde::hdr(x)$hdr },
+  prob = cr.p
+)
+
+SEA.B.modes <- lapply(
+  as.data.frame(SEA.B),
+  function(x, ...) { hdrcde::hdr(x)$mode },
+  prob = cr.p, all.modes = TRUE
+)
+
+# Posterior means (needed for bayesianLayman calcs)
+mu.post <- extractPosteriorMeans(siber.example, ellipses.posterior)
+
+# Bayesian Layman metric distributions
+layman.B <- bayesianLayman(mu.post)
+
+# ---- OPTIONAL: if you want to plot Layman.B (curves), uncomment ----
+# for (i in seq_along(layman.B)) {
+#   siberDensityPlot(layman.B[[i]], xticklabels = colnames(layman.B[[i]]),
+#                    bty = "L", ylim = c(0, 20),
+#                    main = paste0("Layman metrics: Site ", site_levels[i]))
+# }
+
+# ---- OPTIONAL: TA compare first two communities only (if they exist) ----
+# if (length(layman.B) >= 2) {
+#   par(mfrow=c(1,1))
+#   siberDensityPlot(cbind(layman.B[[1]][,"TA"], layman.B[[2]][,"TA"]),
+#                    xticklabels = c(paste0(site_levels[1]), paste0(site_levels[2])),
+#                    bty="L", ylim=c(0,20), las=1,
+#                    ylab="TA - Convex Hull Area", xlab="")
+# }
+
+# ============================================================
+# 10) OUTPUT TABLES WITH HUMAN-READABLE LABELS (very useful!)
+# ============================================================
+
+# group.ML columns are community.group -> convert to Site + Species
+groupML_tbl <- as.data.frame(t(group.ML)) %>%
+  rownames_to_column("community_group") %>%
+  separate(community_group, into = c("community", "group"), sep = "\\.", convert = TRUE) %>%
+  mutate(
+    Site_code    = site_levels[community],
+    Fish_species = species_levels[group]
+  ) %>%
+  select(Site_code, Fish_species, TA, SEA, SEAc) %>%
+  arrange(Site_code, Fish_species)
+
+cat("\nGroup ML metrics table (Site × Species):\n")
+print(groupML_tbl)
+
+# community.ML columns are community index -> attach Site labels
+communityML_tbl <- as.data.frame(t(community.ML)) %>%
+  rownames_to_column("community") %>%
+  mutate(
+    community = as.integer(community),
+    Site_code = site_levels[community]
+  ) %>%
+  select(Site_code, everything(), -community) %>%
+  arrange(Site_code)
+
+cat("\nCommunity ML Layman metrics table (Site):\n")
+print(communityML_tbl)
+
