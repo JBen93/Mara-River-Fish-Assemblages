@@ -28,7 +28,7 @@ BiocManager::install("phyloseq")
 library(phyloseq)
 library(microeco)
 library(file2meco)
-
+library(ggh4x)
 
 # ---- auth ----
 # If sheet is private: comment out deauth and run gs4_auth() once interactively.
