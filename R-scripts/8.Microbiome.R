@@ -29,6 +29,7 @@ library(phyloseq)
 library(microeco)
 library(file2meco)
 
+
 # ---- auth ----
 # If sheet is private: comment out deauth and run gs4_auth() once interactively.
 gs4_deauth()
@@ -164,7 +165,7 @@ ps
 
 ps_FISH <- subset_samples(ps, Species %in% c("Labeobarbus altianalis", "Labeo victorianus"))
 ps_LA <- subset_samples(ps, Species %in% c("Labeobarbus altianalis" , "Hippopotamus amphibius" ))
-ps_LV <- subset_samples(ps, Species %in% c("Labeo victorianus"))
+ps_LV <- subset_samples(ps, Species %in% c("Labeo victorianus", "Hippopotamus amphibius"))
 # add , "Hippopotamus amphibius" 
 
 
@@ -177,7 +178,7 @@ mecops_FISH <- phyloseq2meco(ps_FISH)
 mecops_LA <- phyloseq2meco(ps_LA)
 mecops_LV <- phyloseq2meco(ps_LV)
 
-mecops_rarefied <- mecops_LA
+mecops_rarefied <- mecops_FISH # change as needed
 #sub in  whichever filtered set you want
 
 
