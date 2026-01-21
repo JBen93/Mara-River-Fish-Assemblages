@@ -486,11 +486,10 @@ ggplot(rel_abund_plot,
   # ---- Add annotation (top-right) ----
 annotate(
   "text",
-  x = x_pos, y = y_pos,
-  label = p_label,
-  hjust = 1, vjust = 1,
-  fontface = "bold",
-  size = label_size
+  x = Inf, y = Inf,
+  label = "Paired Wilcoxon: V = 1, p = 0.059",
+  hjust = 1.05, vjust = 1.2,
+  size = 3.5
 )
 
 
