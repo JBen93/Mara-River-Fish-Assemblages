@@ -313,6 +313,48 @@ species_order <- rel_abund %>%
 
 rel_abund <- rel_abund %>%
   mutate(species_canon = factor(species_canon, levels = species_order))
+# -----------------------------
+# Test whether relative abundance differs between the two species
+# (paired across sites)
+# -----------------------------
+library(tidyr)
+library(dplyr)
+library(rstatix)
+library(coin)
+# Wide format: one row per site, one column per species
+rel_wide <- rel_abund %>%
+  select(location_id, species_canon, rel_percent) %>%
+  pivot_wider(names_from = species_canon, values_from = rel_percent)
+
+# Quick look
+print(rel_wide)
+
+# Paired Wilcoxon signed-rank test (recommended)
+wilcox_res <- wilcox.test(
+  rel_wide$`Labeo victorianus`,
+  rel_wide$`Labeobarbus altianalis`,
+  paired = TRUE,
+  exact = FALSE
+)
+
+# Effect size (rank-biserial) for paired Wilcoxon
+eff_res <- rel_abund %>%
+  wilcox_effsize(rel_percent ~ species_canon, paired = TRUE)
+
+cat("\nPaired Wilcoxon signed-rank test (across sites)\n")
+cat("V =", wilcox_res$statistic, " p =", wilcox_res$p.value, "\n")
+print(eff_res)
+
+# Optional: paired t-test (only if you want a parametric comparison too)
+ttest_res <- t.test(
+  rel_wide$`Labeo victorianus`,
+  rel_wide$`Labeobarbus altianalis`,
+  paired = TRUE
+)
+
+cat("\nPaired t-test (across sites) [optional]\n")
+print(ttest_res)
+
 
 # --- Plot: stacked relative abundance ---
 ggplot(rel_abund, aes(x = location_id, y = rel_percent, fill = species_canon)) +
@@ -389,7 +431,68 @@ ggplot(rel_abund_plot,
     legend.position = "right",
     legend.title = element_text(size = 12, face = "bold"),
     legend.text  = element_text(size = 11)
-  )
+    )
+
+
+#######add the statistical annotation to the plot #########
+# ---- Build Wilcoxon label (make sure wilcox_res exists) ----
+p_label <- paste0(
+  "Paired Wilcoxon\n",
+  "V = ", wilcox_res$statistic, "\n",
+  "p = ", formatC(wilcox_res$p.value, format = "f", digits = 3)
+)
+
+label_size <- 4  # <-- adjust label text size here
+
+# ---- Choose a safe top-right position in data coordinates ----
+x_pos <- length(unique(rel_abund_plot$location_id)) + 0.5   # a bit to the right of last site
+y_pos <- 75                                                # top of your y-limit
+
+ggplot(rel_abund_plot,
+       aes(x = location_id, y = rel_percent, fill = species_canon)) +
+  geom_col(position = position_dodge(width = 0.72),
+           width = 0.62, color = "black") +
+  scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 75),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  # give a little room on the right for the annotation
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(5.5, 40, 5.5, 5.5)) +
+  scale_fill_manual(
+    name   = "Species",
+    values = c(
+      "Labeo victorianus"      = "#1F78B4",
+      "Labeobarbus altianalis" = "#E41A1C"
+    ),
+    breaks = species_order
+  ) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "Relative Abundance (%)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold", hjust = 0.5),
+    axis.text.x   = element_text(size = 11),
+    axis.title.y  = element_text(size = 12),
+    legend.position = "right",
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text  = element_text(size = 11)
+  ) +
+  # ---- Add annotation (top-right) ----
+annotate(
+  "text",
+  x = x_pos, y = y_pos,
+  label = p_label,
+  hjust = 1, vjust = 1,
+  fontface = "bold",
+  size = label_size
+)
+
 
 
 ################################################################################
