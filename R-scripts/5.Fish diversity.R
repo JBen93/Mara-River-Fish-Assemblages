@@ -445,3 +445,191 @@ ggplot(summ_H, aes(x = location_id, y = mean_H)) +
     axis.text.x = element_text(size = 12),
     axis.title  = element_text(size = 12)
   )
+###########################################################################
+# ==========================================================
+# Fish diversity (Current only: 2021–2022)
+# Shannon–Wiener H′ per site-year + boxplot
+# Global test among sites: Friedman test (year as block)
+# (Optional) Pairwise paired Wilcoxon among selected sites
+# ==========================================================
+
+rm(list = ls())
+
+library(tidyverse)
+library(janitor)
+library(readr)
+library(vegan)
+library(rstatix)
+library(ggpubr)
+
+# ----------------------------
+# 1) Load + prepare current data (2021–2022)
+# ----------------------------
+url_curr <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+years_keep <- c(2021, 2022)
+
+curr_wide <- read_csv(url_curr, show_col_types = FALSE) %>%
+  clean_names() %>%
+  mutate(
+    fish_species = str_squish(tolower(fish_species)),
+    abundance = 1
+  ) %>%
+  filter(
+    !is.na(location_id),
+    !is.na(sampling_year),
+    !is.na(fish_species),
+    sampling_year %in% years_keep,
+    location_id %in% paste0("M", 1:9)
+  ) %>%
+  group_by(location_id, sampling_year, fish_species) %>%
+  summarise(n = sum(abundance), .groups = "drop") %>%
+  pivot_wider(names_from = fish_species, values_from = n, values_fill = 0) %>%
+  relocate(location_id, sampling_year)
+
+# ----------------------------
+# 2) Compute Shannon H′ per site-year
+# ----------------------------
+species_cols <- setdiff(names(curr_wide), c("location_id", "sampling_year"))
+species_mat  <- curr_wide %>% select(all_of(species_cols)) %>% as.data.frame()
+species_mat[is.na(species_mat)] <- 0
+
+H <- vegan::diversity(species_mat, index = "shannon")
+
+div_curr <- curr_wide %>%
+  select(location_id, sampling_year) %>%
+  mutate(
+    shannon_H = H,
+    sampling_year = factor(sampling_year),
+    location_id = factor(location_id, levels = paste0("M", 1:9))
+  ) %>%
+  filter(is.finite(shannon_H))
+
+# ----------------------------
+# 3) Diagnostics: confirm you truly have 2 obs per site (2021 & 2022)
+# ----------------------------
+cat("\nCounts per site-year:\n")
+print(div_curr %>% count(location_id, sampling_year) %>% arrange(location_id, sampling_year), n = 100)
+
+cat("\nCounts per site (should be 2 each):\n")
+print(div_curr %>% count(location_id) %>% arrange(n, location_id), n = 100)
+
+# ----------------------------
+# 4) Keep only sites with BOTH years (balanced design)
+#    This prevents 'not enough observations' errors
+# ----------------------------
+div_bal <- div_curr %>%
+  group_by(location_id) %>%
+  filter(n_distinct(sampling_year) == 2) %>%
+  ungroup()
+
+# If any sites were dropped, print which ones
+dropped <- setdiff(levels(div_curr$location_id), unique(as.character(div_bal$location_id)))
+if (length(dropped) > 0) {
+  message("\nDropped sites (missing one of the years 2021/2022 or non-finite H′): ",
+          paste(dropped, collapse = ", "))
+}
+
+# Reset factor levels to the remaining sites only (helps plotting)
+div_bal <- div_bal %>%
+  mutate(location_id = factor(as.character(location_id),
+                              levels = sort(unique(as.character(location_id)))))
+
+# ----------------------------
+# 5) Global test among sites accounting for year: Friedman test
+#    (Nonparametric repeated-measures; year is the block)
+# ----------------------------
+fried_test <- div_bal %>%
+  friedman_test(shannon_H ~ location_id | sampling_year)
+
+cat("\nFriedman test:\n")
+print(fried_test)
+
+p_fried <- fried_test$p[1]
+
+# ----------------------------
+# 6) OPTIONAL: Pairwise site comparisons (paired)
+#    WARNING: For many sites this is lots of comparisons; plot will get messy.
+#    Best practice: restrict to a small set of sites.
+# ----------------------------
+
+# Toggle this to TRUE if you want pairwise tests on the plot
+ADD_PAIRWISE <- FALSE
+
+# If you want pairwise comparisons, choose a manageable subset of sites:
+sites_of_interest <- c("M4", "M7", "M9")  # edit as needed
+
+pairwise_tbl <- NULL
+div_pair <- NULL
+
+if (ADD_PAIRWISE) {
+  div_pair <- div_bal %>%
+    filter(as.character(location_id) %in% sites_of_interest) %>%
+    mutate(location_id = factor(as.character(location_id), levels = sites_of_interest))
+  
+  # Ensure still balanced within chosen sites
+  div_pair <- div_pair %>%
+    group_by(location_id) %>%
+    filter(n_distinct(sampling_year) == 2) %>%
+    ungroup()
+  
+  # Paired pairwise Wilcoxon among sites (paired by year)
+  pairwise_tbl <- div_pair %>%
+    pairwise_wilcox_test(
+      shannon_H ~ location_id,
+      paired = TRUE,
+      p.adjust.method = "BH"
+    ) %>%
+    add_xy_position(x = "location_id")
+  
+  cat("\nPairwise paired Wilcoxon (BH-adjusted):\n")
+  print(pairwise_tbl)
+  
+  # Keep only significant (optional)
+  pairwise_tbl <- pairwise_tbl %>% filter(p.adj <= 0.05)
+}
+
+# ----------------------------
+# 7) Plot: boxplot + points + global Friedman p-value
+# ----------------------------
+y_top <- max(div_bal$shannon_H, na.rm = TRUE)
+
+p <- ggplot(div_bal, aes(x = location_id, y = shannon_H)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA, color = "black") +
+  geom_jitter(aes(shape = sampling_year), width = 0.08, size = 2.4, alpha = 0.75) +
+  labs(
+    title = "Fish diversity (Shannon–Wiener H′), 2021–2022",
+    x = "Sampling Site",
+    y = "H′ (Shannon–Wiener)",
+    shape = "Year"
+  ) +
+  annotate(
+    "text",
+    x = 1, y = y_top * 1.13,
+    hjust = 0,
+    label = paste0("Friedman test : p = ", signif(p_fried, 3)),
+    size = 4.2
+  ) +
+  expand_limits(y = y_top * 1.18) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "right"
+  )
+
+# Add pairwise brackets only if enabled and available
+if (ADD_PAIRWISE && !is.null(pairwise_tbl) && nrow(pairwise_tbl) > 0) {
+  p <- p + stat_pvalue_manual(
+    pairwise_tbl,
+    label = "p.adj.signif",
+    tip.length = 0.01,
+    hide.ns = TRUE
+  )
+}
+
+print(p)
+
+# ----------------------------
+# 8) Save figure (optional)
+# ----------------------------
+# ggsave("fish_shannon_2021_2022_sites.png", p, width = 10, height = 5.5, dpi = 300)
+
