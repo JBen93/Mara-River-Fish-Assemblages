@@ -629,7 +629,140 @@ if (ADD_PAIRWISE && !is.null(pairwise_tbl) && nrow(pairwise_tbl) > 0) {
 print(p)
 
 # ----------------------------
-# 8) Save figure (optional)
-# ----------------------------
-# ggsave("fish_shannon_2021_2022_sites.png", p, width = 10, height = 5.5, dpi = 300)
+# ==========================================================
+# Fish diversity (Shannon–Wiener H′) across sites (M2–M9)
+# Using 2021–2022 data (year treated as a repeated factor)
+# Global test: LMM (site fixed, year random)
+# Optional: pairwise comparisons among sites (Tukey)
+# ==========================================================
 
+rm(list = ls())
+
+library(tidyverse)
+library(janitor)
+library(readr)
+library(vegan)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(ggplot2)
+
+# ----------------------------
+# 1) Load + prepare data (2021–2022)
+# ----------------------------
+url_curr <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+years_keep <- c(2021, 2022)
+sites_keep <- paste0("M", 2:9)   # M2–M9
+
+curr_wide <- read_csv(url_curr, show_col_types = FALSE) %>%
+  clean_names() %>%
+  mutate(
+    fish_species = str_squish(tolower(fish_species)),
+    abundance = 1
+  ) %>%
+  filter(
+    !is.na(location_id),
+    !is.na(sampling_year),
+    !is.na(fish_species),
+    sampling_year %in% years_keep,
+    location_id %in% sites_keep
+  ) %>%
+  group_by(location_id, sampling_year, fish_species) %>%
+  summarise(n = sum(abundance), .groups = "drop") %>%
+  pivot_wider(names_from = fish_species, values_from = n, values_fill = 0) %>%
+  relocate(location_id, sampling_year)
+
+# ----------------------------
+# 2) Compute Shannon H′ per site-year
+# ----------------------------
+species_cols <- setdiff(names(curr_wide), c("location_id", "sampling_year"))
+species_mat  <- curr_wide %>% select(all_of(species_cols)) %>% as.data.frame()
+species_mat[is.na(species_mat)] <- 0
+
+H <- vegan::diversity(species_mat, index = "shannon")
+
+div_site_year <- curr_wide %>%
+  select(location_id, sampling_year) %>%
+  mutate(
+    shannon_H = H,
+    sampling_year = factor(sampling_year),
+    location_id = factor(location_id, levels = sites_keep)
+  ) %>%
+  filter(is.finite(shannon_H))
+
+# Quick check (should be 2 rows per site if both years exist)
+cat("\nRows per site-year:\n")
+print(div_site_year %>% count(location_id, sampling_year) %>% arrange(location_id, sampling_year), n = 100)
+
+# ----------------------------
+# 3) Global test: Do sites differ? (account for year)
+#    LMM: shannon_H ~ site + (1|year)
+# ----------------------------
+mod_site <- lmer(shannon_H ~ location_id + (1 | sampling_year), data = div_site_year)
+anova_site <- anova(mod_site)  # Type III via lmerTest
+print(summary(mod_site))
+cat("\nANOVA (site effect):\n")
+print(anova_site)
+
+p_site <- anova_site["location_id", "Pr(>F)"]
+
+# ----------------------------
+# 4) OPTIONAL: Pairwise comparisons among sites (Tukey-adjusted)
+#    Only meaningful if global p is significant or you have a priori contrasts
+# ----------------------------
+DO_PAIRWISE <- TRUE
+
+pairwise_sites <- NULL
+if (DO_PAIRWISE) {
+  em <- emmeans(mod_site, ~ location_id)
+  pairwise_sites <- pairs(em, adjust = "tukey") %>% as.data.frame()
+  cat("\nPairwise site comparisons (Tukey):\n")
+  print(pairwise_sites)
+}
+
+# ----------------------------
+# 5) Plot: Shannon H′ across sites (boxplot + points)
+#    Annotate global p-value
+# ----------------------------
+p_lab <- ifelse(is.na(p_site),
+                "LMM: p = NA",
+                ifelse(p_site < 0.001, "LMM: p < 0.001", paste0("LMM: p = ", signif(p_site, 3))))
+
+y_top <- max(div_site_year$shannon_H, na.rm = TRUE)
+
+p <- ggplot(div_site_year, aes(x = location_id, y = shannon_H)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA, color = "black") +
+  geom_point(aes(shape = sampling_year), position = position_jitter(width = 0.08), size = 2.4, alpha = 0.8) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "H′ (Shannon–Wiener)",
+    shape = "Year"
+  ) +
+  annotate(
+    "text",
+    x = -Inf, y = y_top * 1.12,
+    hjust = -0.05,
+    label = p_lab,
+    size = 4.2
+  ) +
+  expand_limits(y = y_top * 1.18) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "right"
+  )
+
+print(p)
+
+# ----------------------------
+# 6) OPTIONAL nonparametric alternative (simple)
+#    (Compute site means across years, then Kruskal–Wallis)
+# ----------------------------
+div_site_mean <- div_site_year %>%
+  group_by(location_id) %>%
+  summarise(shannon_mean = mean(shannon_H, na.rm = TRUE), .groups = "drop")
+
+kw <- kruskal.test(shannon_H ~ location_id, data = div_site_year)
+cat("\nKruskal–Wallis (ignores year structure, but useful as a check):\n")
+print(kw)
