@@ -131,6 +131,411 @@ p <- ggplot(df_ok, aes(x = d13C_use, y = d15N_use, color = Fish_species)) +
 
 print(p)
 
+
+# ===============================================
+# Isotopic niche overlap across sites using SIBER
+# (1) maxLikOverlap (point estimate)
+# (2) bayesianOverlap (posterior distribution; optional)
+# ===============================================
+
+remove(list = ls())
+
+library(tidyverse)
+library(readr)
+library(SIBER)
+
+# ---- Load data ----
+raw <- read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
+  show_col_types = FALSE
+)
+
+# ---- Targets ----
+target_species <- c("Labeobarbus altianalis", "Labeo victorianus")
+target_sites   <- paste0("M", 4:9)
+
+df <- raw %>%
+  filter(Fish_species %in% target_species,
+         Site_code %in% target_sites)
+
+# ---- Robust column chooser ----
+pick_first_col <- function(dat, candidates) {
+  hit <- intersect(candidates, names(dat))
+  if (length(hit) == 0) stop("None of these columns were found: ", paste(candidates, collapse = " | "))
+  hit[[1]]
+}
+
+c13_name <- pick_first_col(df, c("d13C (permil, vs VPDB)", "Normalized d13C", "d13C (‰, vs VPDB)", "d13C"))
+n15_name <- pick_first_col(df, c("d15N (permil, vs AIR)",  "d15N (‰, vs AIR)",  "d15N"))
+
+# ---- Clean + enforce numeric ----
+df <- df %>%
+  mutate(
+    d13C_use = suppressWarnings(as.numeric(.data[[c13_name]])),
+    d15N_use = suppressWarnings(as.numeric(.data[[n15_name]]))
+  ) %>%
+  filter(is.finite(d13C_use), is.finite(d15N_use))
+
+# ---- Check sample sizes per site x species ----
+grp_sizes <- df %>% count(Site_code, Fish_species, name = "n")
+print(grp_sizes)
+
+# Strong recommendation: n >= 5 for stable covariance / ellipses
+MIN_N <- 4
+
+df_ok <- df %>%
+  inner_join(grp_sizes %>% filter(n >= MIN_N),
+             by = c("Site_code", "Fish_species"))
+
+if (nrow(df_ok) == 0) stop("No site × species groups with n >= ", MIN_N, ". Lower MIN_N to 3, but expect instability.")
+
+# ---- Keys for SIBER ----
+species_key <- df_ok %>%
+  distinct(Fish_species) %>% arrange(Fish_species) %>%
+  mutate(group_id = row_number())
+
+site_key <- df_ok %>%
+  distinct(Site_code) %>% arrange(Site_code) %>%
+  mutate(comm_id = row_number())
+
+df_id <- df_ok %>%
+  left_join(species_key, by = "Fish_species") %>%
+  left_join(site_key, by = "Site_code")
+
+# ---- Build SIBER object ----
+siber_df <- df_id %>%
+  transmute(
+    iso1      = d13C_use,
+    iso2      = d15N_use,
+    group     = as.integer(group_id),  # species
+    community = as.integer(comm_id)    # site
+  ) %>%
+  as.data.frame()
+
+siber_obj <- createSiberObject(siber_df)
+
+cat("\nSpecies key:\n"); print(species_key)
+cat("\nSite key:\n");    print(site_key)
+cat("\nSample sizes used by SIBER:\n"); print(siber_obj$sample.sizes)
+
+# ==========================================================
+# 1) MAXIMUM-LIKELIHOOD OVERLAP PER SITE (fast point estimate)
+# ==========================================================
+
+# Choose ellipse probability:
+# p = 0.40 matches your plotted 40% ellipses
+# p = 0.95 is the common "niche" ellipse
+P_ELLIPSE <- 0.95
+N_POLY    <- 360  # polygon resolution for overlap
+
+# identify the two species group IDs
+g_LV <- species_key %>% filter(Fish_species == "Labeo victorianus") %>% pull(group_id)
+g_LB <- species_key %>% filter(Fish_species == "Labeobarbus altianalis") %>% pull(group_id)
+
+# compute overlap site-by-site using community.group labels like "1.2"
+ml_overlap_by_site <- site_key %>%
+  mutate(
+    label_LV = paste0(comm_id, ".", g_LV),
+    label_LB = paste0(comm_id, ".", g_LB)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    # returns named numeric vector with overlap, area.1, area.2, etc.
+    overlap_obj = list(
+      tryCatch(
+        maxLikOverlap(label_LV, label_LB, siber_obj, p = P_ELLIPSE, n = N_POLY),
+        error = function(e) NA
+      )
+    )
+  ) %>%
+  ungroup() %>%
+  mutate(
+    overlap_area = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["overlap"])),
+    area_LV      = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["area.1"])),
+    area_LB      = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["area.2"])),
+    
+    # Proportion overlap options (choose what you want to report)
+    prop_LV = overlap_area / area_LV,                                  # % of LV ellipse overlapped by LB
+    prop_LB = overlap_area / area_LB,                                  # % of LB ellipse overlapped by LV
+    jaccard = overlap_area / (area_LV + area_LB - overlap_area)         # symmetric overlap index
+  ) %>%
+  select(Site_code, comm_id, overlap_area, area_LV, area_LB, prop_LV, prop_LB, jaccard)
+
+cat("\nMax-likelihood overlap per site (p = ", P_ELLIPSE, "):\n", sep = "")
+print(ml_overlap_by_site)
+
+# Optional quick plot of symmetric overlap (Jaccard) across sites
+ggplot(ml_overlap_by_site, aes(x = Site_code, y = jaccard)) +
+  geom_col(color = "black") +
+  labs(
+    x = "Site",
+    y = "Isotopic niche overlap (Jaccard)",
+    title = paste0("Ellipse overlap across sites (maxLikOverlap; p = ", P_ELLIPSE, ")")
+  ) +
+  theme_minimal(base_size = 13)
+
+# ==========================================================
+# 2) BAYESIAN OVERLAP PER SITE (uncertainty; requires JAGS)
+# ==========================================================
+# This section uses siberMVN() + bayesianOverlap() like your screenshot.
+# If you don't have JAGS installed, skip this section.
+
+RUN_BAYES <- FALSE  # set TRUE if JAGS is installed and you want posterior overlap
+
+if (RUN_BAYES) {
+  
+  # These priors are the standard SIBER defaults/examples (reasonable starting point)
+  # You can tune these later, but keep them as-is first.
+  parms <- list(
+    n.iter = 2 * 10^4,
+    n.burnin = 5 * 10^3,
+    n.thin = 10,
+    n.chains = 2
+  )
+  
+  priors <- list(
+    R = diag(2),
+    k = 2,
+    tau.mu = 1.0E-3
+  )
+  
+  # Fit posterior MVN ellipses across all communities/groups
+  ellipses_posterior <- siberMVN(siber_obj, parms, priors)
+  
+  # Per-site Bayesian overlap draws
+  DRAWS <- 1000
+  
+  bayes_overlap_by_site <- site_key %>%
+    mutate(
+      label_LV = paste0(comm_id, ".", g_LV),
+      label_LB = paste0(comm_id, ".", g_LB)
+    ) %>%
+    rowwise() %>%
+    mutate(
+      bayes_obj = list(
+        tryCatch(
+          bayesianOverlap(label_LV, label_LB,
+                          ellipses_posterior,
+                          draws = DRAWS,
+                          p.interval = P_ELLIPSE,
+                          n = N_POLY),
+          error = function(e) NA
+        )
+      )
+    ) %>%
+    ungroup()
+  
+  # bayesianOverlap returns a table; you can summarise overlap distribution:
+  # (the output object structure can vary by SIBER version, so print first)
+  print(bayes_overlap_by_site$bayes_obj[[1]])
+  
+  # If it returns a vector of overlap draws, summarise like:
+  bayes_summary <- bayes_overlap_by_site %>%
+   mutate(
+  overlap_draws = map(bayes_obj, ~ .x[,"overlap"])  # adjust to match your output
+  ) %>%
+  mutate(
+  overlap_med = map_dbl(overlap_draws, median, na.rm = TRUE),
+  overlap_lo  = map_dbl(overlap_draws, ~ quantile(.x, 0.025, na.rm = TRUE)),
+  overlap_hi  = map_dbl(overlap_draws, ~ quantile(.x, 0.975, na.rm = TRUE))
+ )
+ print(bayes_summary)
+}
+
+
+# ===============================================
+# Posterior distribution of niche overlap (%) using SIBER
+# Labeobarbus altianalis vs Labeo victorianus, per site
+# ===============================================
+
+remove(list = ls())
+
+library(tidyverse)
+library(readr)
+library(SIBER)
+
+# ---- Load data ----
+raw <- read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
+  show_col_types = FALSE
+)
+
+# ---- Targets ----
+target_species <- c("Labeobarbus altianalis", "Labeo victorianus")
+target_sites   <- paste0("M", 4:9)
+
+df <- raw %>%
+  filter(Fish_species %in% target_species,
+         Site_code %in% target_sites)
+
+# ---- Robust column chooser ----
+pick_first_col <- function(dat, candidates) {
+  hit <- intersect(candidates, names(dat))
+  if (length(hit) == 0) stop("None of these columns were found: ", paste(candidates, collapse = " | "))
+  hit[[1]]
+}
+
+c13_name <- pick_first_col(df, c("d13C (permil, vs VPDB)", "Normalized d13C", "d13C (‰, vs VPDB)", "d13C"))
+n15_name <- pick_first_col(df, c("d15N (permil, vs AIR)",  "d15N (‰, vs AIR)",  "d15N"))
+
+# ---- Enforce numeric + drop NAs ----
+df <- df %>%
+  mutate(
+    d13C_use = suppressWarnings(as.numeric(.data[[c13_name]])),
+    d15N_use = suppressWarnings(as.numeric(.data[[n15_name]]))
+  ) %>%
+  filter(is.finite(d13C_use), is.finite(d15N_use))
+
+# ---- Sample sizes and filter (Bayesian can run with n>=3, but n>=5 is more stable) ----
+MIN_N <- 3
+grp_sizes <- df %>% count(Site_code, Fish_species, name = "n")
+print(grp_sizes)
+
+df_ok <- df %>%
+  inner_join(grp_sizes %>% filter(n >= MIN_N),
+             by = c("Site_code","Fish_species"))
+
+if (nrow(df_ok) == 0) stop("No site × species groups with n >= ", MIN_N)
+
+# ---- Keys ----
+species_key <- df_ok %>%
+  distinct(Fish_species) %>% arrange(Fish_species) %>%
+  mutate(group_id = row_number())
+
+site_key <- df_ok %>%
+  distinct(Site_code) %>% arrange(Site_code) %>%
+  mutate(comm_id = row_number())
+
+df_id <- df_ok %>%
+  left_join(species_key, by = "Fish_species") %>%
+  left_join(site_key, by = "Site_code")
+
+# ---- Build SIBER object ----
+siber_df <- df_id %>%
+  transmute(
+    iso1      = d13C_use,
+    iso2      = d15N_use,
+    group     = as.integer(group_id),
+    community = as.integer(comm_id)
+  ) %>%
+  as.data.frame()
+
+siber_obj <- createSiberObject(siber_df)
+
+cat("\nSpecies key:\n"); print(species_key)
+cat("\nSite key:\n");    print(site_key)
+cat("\nSample sizes used by SIBER:\n"); print(siber_obj$sample.sizes)
+
+# ---- Bayesian MVN fit (JAGS) ----
+parms <- list(
+  n.iter   = 20000,
+  n.burnin = 5000,
+  n.thin   = 10,
+  n.chains = 2
+)
+
+priors <- list(
+  R      = diag(2),
+  k      = 2,
+  tau.mu = 1.0E-3
+)
+
+ellipses_posterior <- siberMVN(siber_obj, parms, priors)
+
+# ---- Overlap settings ----
+P_ELLIPSE <- 0.95     # use 0.40 if you want to match your plotted 40% ellipses
+N_POLY    <- 360      # polygon resolution for overlap
+DRAWS     <- 1000     # number of posterior draws to use (reduce if slow)
+
+# group IDs for your two fishes
+g_LV <- species_key %>% filter(Fish_species == "Labeo victorianus") %>% pull(group_id)
+g_LB <- species_key %>% filter(Fish_species == "Labeobarbus altianalis") %>% pull(group_id)
+
+# helper: run bayesianOverlap safely and return a tidy tibble of draws
+run_bayes_overlap <- function(label1, label2, site_label) {
+  
+  bo <- tryCatch(
+    bayesianOverlap(label1, label2,
+                    ellipses_posterior,
+                    draws = DRAWS,
+                    p.interval = P_ELLIPSE,
+                    n = N_POLY),
+    error = function(e) NULL
+  )
+  if (is.null(bo)) return(tibble())
+  
+  bo <- as.data.frame(bo)
+  
+  # Expected columns from SIBER (may vary slightly by version)
+  # Usually includes: overlap, area.1, area.2
+  needed <- c("overlap", "area.1", "area.2")
+  if (!all(needed %in% names(bo))) {
+    stop("bayesianOverlap output missing expected columns. Found: ", paste(names(bo), collapse = ", "))
+  }
+  
+  bo %>%
+    transmute(
+      Site = site_label,
+      overlap_area = as.numeric(overlap),
+      area_1 = as.numeric(`area.1`),
+      area_2 = as.numeric(`area.2`),
+      # Symmetric overlap: Jaccard (%)
+      overlap_pct = 100 * overlap_area / (area_1 + area_2 - overlap_area)
+      # Alternative (asymmetric) options you can also compute:
+      # prop_1_pct = 100 * overlap_area / area_1,
+      # prop_2_pct = 100 * overlap_area / area_2
+    )
+}
+
+# ---- Compute posterior overlap draws per site ----
+overlap_draws <- site_key %>%
+  mutate(
+    label_LV = paste0(comm_id, ".", g_LV),
+    label_LB = paste0(comm_id, ".", g_LB)
+  ) %>%
+  pmap_dfr(function(Site_code, comm_id, label_LV, label_LB) {
+    run_bayes_overlap(label_LV, label_LB, site_label = Site_code)
+  })
+
+if (nrow(overlap_draws) == 0) stop("No overlap draws produced (check sample sizes or JAGS setup).")
+
+print(overlap_draws %>% group_by(Site) %>% summarise(n_draws = n(), .groups = "drop"))
+
+library(ggplot2)
+
+ggplot(overlap_draws, aes(x = overlap_pct)) +
+  geom_density(color = "black") +
+  facet_wrap(~ Site, scales = "free_y") +
+  labs(
+    title = paste0("Posterior distribution of probabilistic niche overlap (%) between\n",
+                   "Labeobarbus altianalis and Labeo victorianus (p = ", P_ELLIPSE, ")"),
+    x = "Niche overlap (%) [posterior draws; Jaccard overlap]",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 13)
+
+ggplot(overlap_draws, aes(x = Site, y = overlap_pct)) +
+  geom_violin(color = "black", trim = TRUE) +
+  geom_boxplot(width = 0.15, outlier.shape = NA) +
+  labs(
+    title = paste0("Posterior niche overlap (%) by site (p = ", P_ELLIPSE, ")"),
+    x = "Site",
+    y = "Niche overlap (%)"
+  ) +
+  theme_minimal(base_size = 13)
+overlap_summary <- overlap_draws %>%
+  group_by(Site) %>%
+  summarise(
+    median = median(overlap_pct, na.rm = TRUE),
+    lo95   = quantile(overlap_pct, 0.025, na.rm = TRUE),
+    hi95   = quantile(overlap_pct, 0.975, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(overlap_summary)
+
+
+
 ##############################################################################
 # ===============================================
 # Fish isotopes in the Mara River
@@ -256,341 +661,4 @@ p_niche <- ggplot() +
 
 print(p_niche)
 ##############################################################################
-# ============================================================
-# SIBER vignette workflow ADAPTED to YOUR data
-# Communities = Sites (M4–M9)
-# Groups      = Species (2 fish species)
-# ============================================================
-
-rm(list = ls())
-graphics.off()
-set.seed(1)
-
-library(tidyverse)
-library(readr)
-library(SIBER)
-library(hdrcde)
-
-# ---------------------------
-# 1) LOAD YOUR DATA
-# ---------------------------
-raw <- readr::read_csv(
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=698972139&single=true&output=csv",
-  show_col_types = FALSE
-)
-
-# ---------------------------
-# 2) TARGETS (match your setup)
-# ---------------------------
-species_levels <- c("Labeobarbus altianalis", "Labeo victorianus")  # group order
-site_levels    <- paste0("M", 4:9)                                  # community order
-
-# ---------------------------
-# 3) HELPERS
-# ---------------------------
-pick_first_col <- function(dat, candidates) {
-  hit <- intersect(candidates, names(dat))
-  if (length(hit) == 0) stop("None of these columns were found: ", paste(candidates, collapse = " | "))
-  hit[[1]]
-}
-
-# Fix for SIBER sometimes returning SEA.B with NULL colnames:
-# Create "community.group" labels in the SAME order as SIBER output.
-label_seab_cols_if_missing <- function(SEA.B, siber_obj, min_n) {
-  if (!is.null(colnames(SEA.B))) return(as.matrix(SEA.B))
-  
-  ss <- siber_obj$sample.sizes
-  present <- which(!is.na(ss) & ss >= min_n, arr.ind = TRUE)
-  
-  if (nrow(present) == 0) stop("No valid community×group combos with n >= ", min_n)
-  
-  # SIBER order is community-major then group
-  present <- present[order(present[, 1], present[, 2]), , drop = FALSE]
-  labels  <- apply(present, 1, function(ix) paste(ix[1], ix[2], sep = "."))
-  
-  if (ncol(SEA.B) != length(labels)) {
-    cat("\nDEBUG mismatch in SEA.B labeling\n")
-    cat("ncol(SEA.B) =", ncol(SEA.B), "\n")
-    cat("length(labels) =", length(labels), "\n")
-    cat("labels:\n"); print(labels)
-    stop("Cannot label SEA.B: mismatch between SEA.B columns and present community×group combos.\n",
-         "Try raising min_n (e.g., 6–10) or check sample sizes.")
-  }
-  
-  SEA.B <- as.matrix(SEA.B)
-  colnames(SEA.B) <- labels
-  SEA.B
-}
-
-# Lookup: "community.group" -> Site + Species labels
-make_lookup <- function(col_ids, site_levels, species_levels) {
-  tmp <- strsplit(col_ids, "\\.")
-  community <- as.integer(vapply(tmp, `[`, "", 1))
-  group     <- as.integer(vapply(tmp, `[`, "", 2))
-  
-  tibble(
-    group_id     = col_ids,
-    community    = community,
-    group        = group,
-    Site_code    = site_levels[community],
-    Fish_species = species_levels[group]
-  )
-}
-
-# ---------------------------
-# 4) FILTER + CLEAN ISOTOPES
-# ---------------------------
-df0 <- raw %>%
-  dplyr::filter(Fish_species %in% species_levels,
-                Site_code %in% site_levels)
-
-c13_name <- pick_first_col(df0, c(
-  "d13C (permil, vs VPDB)",
-  "Normalized d13C",
-  "d13C (‰, vs VPDB)",
-  "d13C", "d13C_corrected", "C13"
-))
-n15_name <- pick_first_col(df0, c(
-  "d15N (permil, vs AIR)",
-  "d15N (‰, vs AIR)",
-  "d15N", "N15"
-))
-
-df <- df0 %>%
-  transmute(
-    Site_code    = as.character(Site_code),
-    Fish_species = as.character(Fish_species),
-    d13C_use     = suppressWarnings(as.numeric(.data[[c13_name]])),
-    d15N_use     = suppressWarnings(as.numeric(.data[[n15_name]]))
-  ) %>%
-  drop_na(Site_code, Fish_species, d13C_use, d15N_use)
-
-# ---------------------------
-# 5) MINIMUM SAMPLE SIZE FILTER
-# ---------------------------
-min_n <- 5  # recommended; can drop to 3 if absolutely necessary
-
-df_ok <- df %>%
-  group_by(Site_code, Fish_species) %>%
-  filter(n() >= min_n) %>%
-  ungroup()
-
-if (nrow(df_ok) == 0) stop("No Site×Species groups with n >= ", min_n, ". Try min_n <- 3 if needed.")
-
-# stable coding (communities=sites; groups=species)
-df_ok <- df_ok %>%
-  mutate(
-    Site_code    = factor(Site_code, levels = site_levels),
-    Fish_species = factor(Fish_species, levels = species_levels),
-    community    = as.integer(Site_code),
-    group        = as.integer(Fish_species)
-  )
-
-# SIBER input frame
-siber_df <- df_ok %>%
-  transmute(
-    iso1      = d13C_use,
-    iso2      = d15N_use,
-    group     = group,
-    community = community
-  ) %>%
-  as.data.frame()
-
-# ---------------------------
-# 6) CREATE SIBER OBJECT (this replaces siber.example)
-# ---------------------------
-siber.example <- createSiberObject(siber_df)
-
-cat("\nSample sizes (rows=community/site index, cols=group/species index):\n")
-print(siber.example$sample.sizes)
-cat("\nCommunity index -> Site:\n"); print(tibble(community = seq_along(site_levels), Site = site_levels))
-cat("\nGroup index -> Species:\n");   print(tibble(group = seq_along(species_levels), Species = species_levels))
-
-# ============================================================
-# 7) PLOTS (same as vignette, using your siber.example object)
-# ============================================================
-
-community.hulls.args <- list(col = 1, lty = 1, lwd = 1)
-group.ellipses.args  <- list(n = 100, p.interval = 0.95, lty = 1, lwd = 2)
-group.hulls.args     <- list(lty = 2, col = "grey20")
-
-par(mfrow = c(1,1))
-plotSiberObject(
-  siber.example,
-  ax.pad = 2,
-  hulls = FALSE, community.hulls.args = community.hulls.args,
-  ellipses = TRUE, group.ellipses.args = group.ellipses.args,
-  group.hulls = TRUE, group.hulls.args = group.hulls.args,
-  bty = "L",
-  iso.order = c(1,2),
-  xlab = expression({delta}^13*C~"‰"),
-  ylab = expression({delta}^15*N~"‰")
-)
-
-# smaller points plot (like vignette)
-group.hull.args <- list(lty = 2, col = "grey20")
-par(mfrow = c(1,1))
-plotSiberObject(
-  siber.example,
-  ax.pad = 2,
-  hulls = FALSE, community.hulls.args,
-  ellipses = FALSE, group.ellipses.args,
-  group.hulls = FALSE, group.hull.args,
-  bty = "L",
-  iso.order = c(1,2),
-  xlab = expression({delta}^13*C~"‰"),
-  ylab = expression({delta}^15*N~"‰"),
-  cex  = 0.5
-)
-
-# ============================================================
-# 8) >>> THIS IS THE BLOCK YOU SAID WAS MISSING <<<
-#    GROUP ML METRICS + ELLIPSES + COMMUNITY METRICS
-# ============================================================
-
-# Calculate summary statistics for each group: TA, SEA and SEAc
-group.ML <- groupMetricsML(siber.example)
-cat("\nGroup-level ML metrics (TA, SEA, SEAc). Columns = community.group:\n")
-print(group.ML)
-
-# Add a prediction ellipse
-plotGroupEllipses(siber.example, n = 100, p.interval = 0.95,
-                  lty = 1, lwd = 2)
-
-# Add CI around bivariate means
-plotGroupEllipses(siber.example, n = 100, p.interval = 0.95, ci.mean = TRUE,
-                  lty = 1, lwd = 2)
-
-# Plot convex hulls (community level), like vignette
-par(mfrow = c(1,1))
-plotSiberObject(
-  siber.example,
-  ax.pad = 2,
-  hulls = TRUE, community.hulls.args,
-  ellipses = FALSE, group.ellipses.args,
-  group.hulls = FALSE, group.hull.args,
-  bty = "L",
-  iso.order = c(1,2),
-  xlab = expression({delta}^13*C~"‰"),
-  ylab = expression({delta}^15*N~"‰"),
-  cex  = 0.5
-)
-
-# Optionally add CI ellipses on top of hull plot
-plotGroupEllipses(siber.example, n = 100, p.interval = 0.95,
-                  ci.mean = TRUE, lty = 1, lwd = 2)
-
-# Community-level Layman metrics
-community.ML <- communityMetricsML(siber.example)
-cat("\nCommunity-level ML Layman metrics (per community/site index):\n")
-print(community.ML)
-
-# ============================================================
-# 9) BAYESIAN SETTINGS + POSTERIOR (same as vignette)
-#    (You can keep this if you want the calculations; plots are optional)
-# ============================================================
-
-parms <- list()
-parms$n.iter   <- 2 * 10^4
-parms$n.burnin <- 1 * 10^3
-parms$n.thin   <- 10
-parms$n.chains <- 2
-
-priors <- list()
-priors$R      <- 1 * diag(2)
-priors$k      <- 2
-priors$tau.mu <- 1.0E-3
-
-ellipses.posterior <- siberMVN(siber.example, parms, priors)
-
-# SEA.B (posterior draws)
-SEA.B <- siberEllipses(ellipses.posterior)
-SEA.B <- label_seab_cols_if_missing(SEA.B, siber.example, min_n)
-
-# Create nice readable labels (Site | Species) in the same order as SEA.B
-lookup <- make_lookup(colnames(SEA.B), site_levels, species_levels)
-xticks <- paste0(lookup$Site_code, " | ", lookup$Fish_species)
-
-# ---- OPTIONAL PLOT (you said you don't need the curves; so it’s optional) ----
-# siberDensityPlot(SEA.B, xticklabels = xticks,
-#                  xlab = "Site | Species",
-#                  ylab = expression("Standard Ellipse Area " ("‰"^2)),
-#                  bty = "L", las = 2,
-#                  main = "SIBER ellipses on each group (SEA.B)")
-
-# Add red x's for ML SEAc (matched safely)
-# (This still computes even if you don’t plot)
-seac_vec <- group.ML["SEAc", ]
-seac_vec <- seac_vec[match(colnames(SEA.B), colnames(group.ML))]
-
-# if you plot, then uncomment:
-# points(1:ncol(SEA.B), seac_vec, col = "red", pch = "x", lwd = 2)
-
-# Credible intervals and modes (CALCULATIONS)
-cr.p <- c(0.95, 0.99)
-
-SEA.B.credibles <- lapply(
-  as.data.frame(SEA.B),
-  function(x, ...) { hdrcde::hdr(x)$hdr },
-  prob = cr.p
-)
-
-SEA.B.modes <- lapply(
-  as.data.frame(SEA.B),
-  function(x, ...) { hdrcde::hdr(x)$mode },
-  prob = cr.p, all.modes = TRUE
-)
-
-# Posterior means (needed for bayesianLayman calcs)
-mu.post <- extractPosteriorMeans(siber.example, ellipses.posterior)
-
-# Bayesian Layman metric distributions
-layman.B <- bayesianLayman(mu.post)
-
-# ---- OPTIONAL: if you want to plot Layman.B (curves), uncomment ----
-# for (i in seq_along(layman.B)) {
-#   siberDensityPlot(layman.B[[i]], xticklabels = colnames(layman.B[[i]]),
-#                    bty = "L", ylim = c(0, 20),
-#                    main = paste0("Layman metrics: Site ", site_levels[i]))
-# }
-
-# ---- OPTIONAL: TA compare first two communities only (if they exist) ----
-# if (length(layman.B) >= 2) {
-#   par(mfrow=c(1,1))
-#   siberDensityPlot(cbind(layman.B[[1]][,"TA"], layman.B[[2]][,"TA"]),
-#                    xticklabels = c(paste0(site_levels[1]), paste0(site_levels[2])),
-#                    bty="L", ylim=c(0,20), las=1,
-#                    ylab="TA - Convex Hull Area", xlab="")
-# }
-
-# ============================================================
-# 10) OUTPUT TABLES WITH HUMAN-READABLE LABELS (very useful!)
-# ============================================================
-
-# group.ML columns are community.group -> convert to Site + Species
-groupML_tbl <- as.data.frame(t(group.ML)) %>%
-  rownames_to_column("community_group") %>%
-  separate(community_group, into = c("community", "group"), sep = "\\.", convert = TRUE) %>%
-  mutate(
-    Site_code    = site_levels[community],
-    Fish_species = species_levels[group]
-  ) %>%
-  select(Site_code, Fish_species, TA, SEA, SEAc) %>%
-  arrange(Site_code, Fish_species)
-
-cat("\nGroup ML metrics table (Site × Species):\n")
-print(groupML_tbl)
-
-# community.ML columns are community index -> attach Site labels
-communityML_tbl <- as.data.frame(t(community.ML)) %>%
-  rownames_to_column("community") %>%
-  mutate(
-    community = as.integer(community),
-    Site_code = site_levels[community]
-  ) %>%
-  select(Site_code, everything(), -community) %>%
-  arrange(Site_code)
-
-cat("\nCommunity ML Layman metrics table (Site):\n")
-print(communityML_tbl)
 
