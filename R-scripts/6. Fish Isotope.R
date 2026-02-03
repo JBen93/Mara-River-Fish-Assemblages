@@ -443,96 +443,110 @@ priors <- list(
 ellipses_posterior <- siberMVN(siber_obj, parms, priors)
 
 # ---- Overlap settings ----
-P_ELLIPSE <- 0.95     # use 0.40 if you want to match your plotted 40% ellipses
-N_POLY    <- 360      # polygon resolution for overlap
-DRAWS     <- 1000     # number of posterior draws to use (reduce if slow)
+P_ELLIPSE <- 0.40     # use 0.40 if you want to match your plotted 40% ellipses
+N_POLY    <- 250      # polygon resolution for overlap
+DRAWS     <- 90     # number of posterior draws to use (reduce if slow)
+
+ls()
 
 # group IDs for your two fishes
 g_LV <- species_key %>% filter(Fish_species == "Labeo victorianus") %>% pull(group_id)
 g_LB <- species_key %>% filter(Fish_species == "Labeobarbus altianalis") %>% pull(group_id)
 
 # helper: run bayesianOverlap safely and return a tidy tibble of draws
-run_bayes_overlap <- function(label1, label2, site_label) {
+run_bayes_overlap <- function(label_A, label_B, site_label,
+                              ellipses_posterior,
+                              draws = 250,
+                              p.interval = 0.40,
+                              n = 90) {
   
-  bo <- tryCatch(
-    bayesianOverlap(label1, label2,
-                    ellipses_posterior,
-                    draws = DRAWS,
-                    p.interval = P_ELLIPSE,
-                    n = N_POLY),
-    error = function(e) NULL
-  )
-  if (is.null(bo)) return(tibble())
+  # NOTE: call bayesianOverlap POSITIONALLY for compatibility
+  bo <- bayesianOverlap(label_A, label_B,
+                        ellipses_posterior,
+                        draws = draws,
+                        p.interval = p.interval,
+                        n = n)
   
-  bo <- as.data.frame(bo)
+  bo_df <- as.data.frame(bo)
+  nm <- names(bo_df)
   
-  # Expected columns from SIBER (may vary slightly by version)
-  # Usually includes: overlap, area.1, area.2
-  needed <- c("overlap", "area.1", "area.2")
-  if (!all(needed %in% names(bo))) {
-    stop("bayesianOverlap output missing expected columns. Found: ", paste(names(bo), collapse = ", "))
+  if (!("overlap" %in% nm)) stop("Expected column 'overlap' not found. Found: ", paste(nm, collapse=", "))
+  
+  if ("area1" %in% nm && "area2" %in% nm) {
+    bo_df <- bo_df %>% dplyr::rename(area_A = area1, area_B = area2)
+  } else if ("area.1" %in% nm && "area.2" %in% nm) {
+    bo_df <- bo_df %>% dplyr::rename(area_A = `area.1`, area_B = `area.2`)
+  } else {
+    stop("bayesianOverlap output missing expected area columns. Found: ", paste(nm, collapse=", "))
   }
   
-  bo %>%
-    transmute(
+  bo_df %>%
+    dplyr::mutate(
       Site = site_label,
-      overlap_area = as.numeric(overlap),
-      area_1 = as.numeric(`area.1`),
-      area_2 = as.numeric(`area.2`),
-      # Symmetric overlap: Jaccard (%)
-      overlap_pct = 100 * overlap_area / (area_1 + area_2 - overlap_area)
-      # Alternative (asymmetric) options you can also compute:
-      # prop_1_pct = 100 * overlap_area / area_1,
-      # prop_2_pct = 100 * overlap_area / area_2
-    )
+      jaccard = overlap / (area_A + area_B - overlap),
+      jaccard_pct = 100 * jaccard,
+      p = p.interval
+    ) %>%
+    dplyr::select(Site, p, area_A, area_B, overlap, jaccard, jaccard_pct)
 }
 
 # ---- Compute posterior overlap draws per site ----
+run_bayes_overlap(label_LV, label_LB, site_label = Site_code)
 overlap_draws <- site_key %>%
   mutate(
     label_LV = paste0(comm_id, ".", g_LV),
     label_LB = paste0(comm_id, ".", g_LB)
   ) %>%
-  pmap_dfr(function(Site_code, comm_id, label_LV, label_LB) {
-    run_bayes_overlap(label_LV, label_LB, site_label = Site_code)
+  purrr::pmap_dfr(function(Site_code, comm_id, label_LV, label_LB) {
+    run_bayes_overlap(
+      label_A = label_LV,
+      label_B = label_LB,
+      site_label = Site_code,
+      ellipses_posterior = ellipses_posterior,
+      draws = 250,
+      p.interval = 0.40,
+      n = 90
+    )
   })
 
-if (nrow(overlap_draws) == 0) stop("No overlap draws produced (check sample sizes or JAGS setup).")
-
-print(overlap_draws %>% group_by(Site) %>% summarise(n_draws = n(), .groups = "drop"))
 
 library(ggplot2)
 
-ggplot(overlap_draws, aes(x = overlap_pct)) +
-  geom_density(color = "black") +
+ggplot(overlap_draws, aes(x = jaccard_pct)) +
+  geom_density() +
   facet_wrap(~ Site, scales = "free_y") +
   labs(
-    title = paste0("Posterior distribution of probabilistic niche overlap (%) between\n",
-                   "Labeobarbus altianalis and Labeo victorianus (p = ", P_ELLIPSE, ")"),
-    x = "Niche overlap (%) [posterior draws; Jaccard overlap]",
-    y = "Density"
+    x = "Posterior niche overlap (Jaccard, %)",
+    y = "Density",
+    title = "Posterior distribution of isotopic niche overlap by site"
   ) +
-  theme_minimal(base_size = 13)
+  theme_bw(base_size = 12)
 
-ggplot(overlap_draws, aes(x = Site, y = overlap_pct)) +
+
+ggplot(overlap_draws, aes(x = Site, y = jaccard_pct)) +
   geom_violin(color = "black", trim = TRUE) +
   geom_boxplot(width = 0.15, outlier.shape = NA) +
   labs(
     title = paste0("Posterior niche overlap (%) by site (p = ", P_ELLIPSE, ")"),
     x = "Site",
-    y = "Niche overlap (%)"
+    y = "Niche overlap (Jaccard, %)"
   ) +
   theme_minimal(base_size = 13)
+
+
+
 overlap_summary <- overlap_draws %>%
   group_by(Site) %>%
   summarise(
-    median = median(overlap_pct, na.rm = TRUE),
-    lo95   = quantile(overlap_pct, 0.025, na.rm = TRUE),
-    hi95   = quantile(overlap_pct, 0.975, na.rm = TRUE),
+    median = median(jaccard_pct, na.rm = TRUE),
+    lo95   = quantile(jaccard_pct, 0.025, na.rm = TRUE),
+    hi95   = quantile(jaccard_pct, 0.975, na.rm = TRUE),
     .groups = "drop"
-  )
+  ) %>%
+  arrange(Site)
 
 print(overlap_summary)
+
 
 
 
