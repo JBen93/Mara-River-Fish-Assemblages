@@ -548,6 +548,64 @@ overlap_summary <- overlap_draws %>%
 print(overlap_summary)
 
 
+library(ggplot2)
+
+ggplot(overlap_draws, aes(x = Site, y = jaccard_pct)) +
+  geom_violin(
+    fill = "grey80",
+    color = "black",
+    trim = TRUE
+  ) +
+  geom_boxplot(
+    width = 0.15,
+    fill = "white",
+    color = "black",
+    outlier.shape = NA
+  ) +
+  labs(
+    x = "Sampling site",
+    y = "Isotopic niche overlap (Jaccard, %)",
+    title = "Posterior isotopic niche overlap between fish species across sites"
+  ) +
+  theme_bw(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid = element_blank()
+  )
+library(ggplot2)
+
+ggplot(overlap_draws, aes(x = jaccard_pct)) +
+  geom_density(color = "black", linewidth = 0.9) +
+  
+  # Median
+  geom_vline(
+    data = overlap_summary,
+    aes(xintercept = median),
+    linetype = "solid",
+    linewidth = 0.8
+  ) +
+  
+  # 95% credible interval
+  geom_vline(
+    data = overlap_summary,
+    aes(xintercept = lo95),
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  geom_vline(
+    data = overlap_summary,
+    aes(xintercept = hi95),
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  
+  facet_wrap(~ Site, scales = "free_y") +
+  labs(
+    x = "Posterior niche overlap (Jaccard, %)",
+    y = "Density",
+    title = "Posterior distribution of isotopic niche overlap (core niche, p = 0.40)"
+  ) +
+  theme_bw(base_size = 12)
 
 
 ##############################################################################
