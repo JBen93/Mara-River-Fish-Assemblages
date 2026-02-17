@@ -218,61 +218,6 @@ cat("\nSpecies key:\n"); print(species_key)
 cat("\nSite key:\n");    print(site_key)
 cat("\nSample sizes used by SIBER:\n"); print(siber_obj$sample.sizes)
 
-# ==========================================================
-# 1) MAXIMUM-LIKELIHOOD OVERLAP PER SITE (fast point estimate)
-# ==========================================================
-
-# Choose ellipse probability:
-# p = 0.40 matches your plotted 40% ellipses
-# p = 0.95 is the common "niche" ellipse
-P_ELLIPSE <- 0.95
-N_POLY    <- 360  # polygon resolution for overlap
-
-# identify the two species group IDs
-g_LV <- species_key %>% filter(Fish_species == "Labeo victorianus") %>% pull(group_id)
-g_LB <- species_key %>% filter(Fish_species == "Labeobarbus altianalis") %>% pull(group_id)
-
-# compute overlap site-by-site using community.group labels like "1.2"
-ml_overlap_by_site <- site_key %>%
-  mutate(
-    label_LV = paste0(comm_id, ".", g_LV),
-    label_LB = paste0(comm_id, ".", g_LB)
-  ) %>%
-  rowwise() %>%
-  mutate(
-    # returns named numeric vector with overlap, area.1, area.2, etc.
-    overlap_obj = list(
-      tryCatch(
-        maxLikOverlap(label_LV, label_LB, siber_obj, p = P_ELLIPSE, n = N_POLY),
-        error = function(e) NA
-      )
-    )
-  ) %>%
-  ungroup() %>%
-  mutate(
-    overlap_area = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["overlap"])),
-    area_LV      = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["area.1"])),
-    area_LB      = map_dbl(overlap_obj, ~ if (all(is.na(.x))) NA_real_ else as.numeric(.x["area.2"])),
-    
-    # Proportion overlap options (choose what you want to report)
-    prop_LV = overlap_area / area_LV,                                  # % of LV ellipse overlapped by LB
-    prop_LB = overlap_area / area_LB,                                  # % of LB ellipse overlapped by LV
-    jaccard = overlap_area / (area_LV + area_LB - overlap_area)         # symmetric overlap index
-  ) %>%
-  select(Site_code, comm_id, overlap_area, area_LV, area_LB, prop_LV, prop_LB, jaccard)
-
-cat("\nMax-likelihood overlap per site (p = ", P_ELLIPSE, "):\n", sep = "")
-print(ml_overlap_by_site)
-
-# Optional quick plot of symmetric overlap (Jaccard) across sites
-ggplot(ml_overlap_by_site, aes(x = Site_code, y = jaccard)) +
-  geom_col(color = "black") +
-  labs(
-    x = "Site",
-    y = "Isotopic niche overlap (Jaccard)",
-    title = paste0("Ellipse overlap across sites (maxLikOverlap; p = ", P_ELLIPSE, ")")
-  ) +
-  theme_minimal(base_size = 13)
 
 # ==========================================================
 # 2) BAYESIAN OVERLAP PER SITE (uncertainty; requires JAGS)
