@@ -602,4 +602,393 @@ ggplot(rel_abund_all, aes(x = location_id, y = rel_percent, fill = species_label
     legend.title  = element_text(face = "bold"),
     legend.key.height = unit(0.45, "cm")
   )
+##################################################################################
+############################################################
+# Relative abundance (%) of Labeo victorianus vs Labeobarbus altianalis
+# Sites M4–M9, Years 2021–2022
+# Mean ± SE across years (SE = 0 if only 1 year available)
+# Grouped bar plot with black SE error bars + paired Wilcoxon across sites
+############################################################
 
+remove(list = ls())
+
+# ---- Packages ----
+libs <- c("tidyverse", "readr", "janitor", "stringr", "rstatix", "scales")
+to_install <- libs[!libs %in% installed.packages()[, "Package"]]
+if (length(to_install) > 0) install.packages(to_install, dependencies = TRUE)
+invisible(lapply(libs, library, character.only = TRUE))
+
+# ---- Data link (Google Sheet CSV) ----
+data_url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+
+# ---- Load data ----
+dat <- readr::read_csv(data_url, show_col_types = FALSE) %>%
+  janitor::clean_names()
+
+# ---- Canonicalize/clean key fields ----
+dat <- dat %>%
+  mutate(
+    location_id   = as.character(location_id),
+    sampling_year = suppressWarnings(as.integer(sampling_year)),
+    fish_species  = stringr::str_squish(stringr::str_to_lower(fish_species))
+  )
+
+# ---- Keep only sites + years of interest ----
+sites_keep <- paste0("M", 4:9)
+years_keep <- c(2021, 2022)
+
+dat_sub <- dat %>%
+  filter(
+    location_id %in% sites_keep,
+    sampling_year %in% years_keep,
+    !is.na(fish_species), fish_species != ""
+  )
+
+# ---- Map species names to the two focal taxa ----
+dat_sub <- dat_sub %>%
+  mutate(
+    species_canon = case_when(
+      str_detect(fish_species, "^labeo\\s+victorianus$") ~ "Labeo victorianus",
+      str_detect(fish_species, "^labeobarbus\\s+alti?analis$") ~ "Labeobarbus altianalis",
+      TRUE ~ NA_character_
+    ),
+    location_id = factor(location_id, levels = sites_keep),
+    sampling_year = factor(sampling_year)
+  )
+
+# ============================================================
+# STEP 1: total catch per site-year (ALL species)
+# ============================================================
+tot_site_year <- dat_sub %>%
+  count(location_id, sampling_year, name = "n_total") %>%
+  tidyr::complete(
+    location_id = factor(sites_keep, levels = sites_keep),
+    sampling_year = factor(years_keep),
+    fill = list(n_total = 0)
+  )
+
+# ============================================================
+# STEP 2: focal counts per site-year (two focal species only)
+# ============================================================
+focal_site_year <- dat_sub %>%
+  filter(!is.na(species_canon)) %>%
+  count(location_id, sampling_year, fish_species = species_canon, name = "n_focal") %>%
+  tidyr::complete(
+    location_id = factor(sites_keep, levels = sites_keep),
+    sampling_year = factor(years_keep),
+    fish_species = factor(
+      c("Labeo victorianus", "Labeobarbus altianalis"),
+      levels = c("Labeobarbus altianalis", "Labeo victorianus")
+    ),
+    fill = list(n_focal = 0)
+  )
+
+# ============================================================
+# STEP 3: relative abundance (%) per site-year-species
+# ============================================================
+rel_site_year <- focal_site_year %>%
+  left_join(tot_site_year, by = c("location_id", "sampling_year")) %>%
+  mutate(
+    n_total = replace_na(n_total, 0),
+    rel_percent = if_else(n_total > 0, 100 * n_focal / n_total, 0)
+  )
+
+# ============================================================
+# STEP 4: mean ± SE across years for each site × species
+#   - IMPORTANT FIX: if only 1 year exists, set SE = 0
+# ============================================================
+rel_summary <- rel_site_year %>%
+  group_by(location_id, fish_species) %>%
+  summarise(
+    n_rep    = sum(!is.na(rel_percent)),
+    mean_rel = mean(rel_percent, na.rm = TRUE),
+    se_rel   = if_else(n_rep > 1, sd(rel_percent, na.rm = TRUE) / sqrt(n_rep), 0),
+    .groups = "drop"
+  )
+
+# Optional: check why an error bar might be missing (M4 example)
+rel_site_year %>%
+  filter(location_id == "M4", fish_species == "Labeobarbus altianalis") %>%
+  arrange(sampling_year) %>%
+  print(n = Inf)
+
+# ============================================================
+# STEP 5: Paired Wilcoxon across sites
+#   - use site-level mean relative abundance (paired by site)
+# ============================================================
+rel_wide <- rel_summary %>%
+  select(location_id, fish_species, mean_rel) %>%
+  tidyr::pivot_wider(names_from = fish_species, values_from = mean_rel)
+
+wilcox_res <- wilcox.test(
+  rel_wide$`Labeo victorianus`,
+  rel_wide$`Labeobarbus altianalis`,
+  paired = TRUE,
+  exact = FALSE
+)
+
+p_label <- paste0(
+  "Paired Wilcoxon: V = ", unname(wilcox_res$statistic),
+  ", p = ", formatC(wilcox_res$p.value, format = "f", digits = 3)
+)
+
+# ============================================================
+# STEP 6: Plot (grouped bars) with black SE error bars
+#   - Labeobarbus altianalis = red
+#   - Labeo victorianus      = blue
+# ============================================================
+pal_species <- c(
+  "Labeobarbus altianalis" = "#E41A1C",
+  "Labeo victorianus"      = "#1F78B4"
+)
+
+rel_summary <- rel_summary %>%
+  mutate(
+    fish_species = factor(fish_species, levels = c("Labeobarbus altianalis", "Labeo victorianus"))
+  )
+
+p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_species)) +
+  geom_col(
+    position = position_dodge(width = 0.72),
+    width = 0.62,
+    color = "black"
+  ) +
+  geom_errorbar(
+    aes(ymin = pmax(mean_rel - se_rel, 0), ymax = mean_rel + se_rel),
+    position = position_dodge(width = 0.72),
+    width = 0.18,
+    linewidth = 0.6,
+    color = "black"
+  ) +
+  scale_fill_manual(name = "Species", values = pal_species) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 75),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "Relative Abundance (%)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 11),
+    plot.margin = margin(5.5, 18, 5.5, 5.5)
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = Inf,
+    label = p_label,
+    hjust = 1.05, vjust = 1.2,
+    size = 3.8
+  )
+
+print(p_rel)
+
+# ============================================================
+# OPTIONAL: Save publication-quality figure (JPEG)
+# ============================================================
+dir.create("Figures", showWarnings = FALSE)
+
+ggsave(
+  filename = "Figures/RelativeAbundance_LV_vs_LA_M4-M9_2021-2022.jpg",
+  plot = p_rel,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+##############################################################################
+############################################################
+# Relative abundance (%) of Labeo victorianus vs Labeobarbus altianalis
+# Sites M4–M9, Years 2021–2022
+# Mean ± SE across years (SE = SD/sqrt(n_years_with_data); SE = 0 if n=1)
+# Grouped bar plot with black SE error bars + paired Wilcoxon across sites
+############################################################
+
+remove(list = ls())
+
+# ---- Packages ----
+libs <- c("tidyverse", "readr", "janitor", "stringr", "rstatix", "scales")
+to_install <- libs[!libs %in% installed.packages()[, "Package"]]
+if (length(to_install) > 0) install.packages(to_install, dependencies = TRUE)
+invisible(lapply(libs, library, character.only = TRUE))
+
+# ---- Data link (Google Sheet CSV) ----
+data_url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vRDo5laGSxF444O2xpHBPq4papf5IJd5VQ6BOFoUKGZIZZRqAp5gHsWrWfv-P3A2OBeJUH16Gn4N_ng/pub?gid=152464398&single=true&output=csv"
+
+# ---- Load + clean ----
+dat <- readr::read_csv(data_url, show_col_types = FALSE) %>%
+  janitor::clean_names() %>%
+  mutate(
+    location_id   = as.character(location_id),
+    sampling_year = suppressWarnings(as.integer(sampling_year)),
+    fish_species  = stringr::str_squish(stringr::str_to_lower(fish_species))
+  ) %>%
+  filter(!is.na(location_id), !is.na(sampling_year), !is.na(fish_species), fish_species != "")
+
+# ---- Keep only sites + years of interest ----
+sites_keep <- paste0("M", 4:9)
+years_keep <- c(2021, 2022)
+
+dat_sub <- dat %>%
+  filter(
+    location_id %in% sites_keep,
+    sampling_year %in% years_keep
+  ) %>%
+  mutate(
+    location_id = factor(location_id, levels = sites_keep),
+    sampling_year = factor(sampling_year, levels = years_keep)
+  )
+
+# ---- Canonicalize species names to 2 focal taxa ----
+dat_sub <- dat_sub %>%
+  mutate(
+    species_canon = case_when(
+      str_detect(fish_species, "^labeo\\s+victorianus$") ~ "Labeo victorianus",
+      str_detect(fish_species, "^labeobarbus\\s+alti?analis$") ~ "Labeobarbus altianalis",
+      TRUE ~ NA_character_
+    )
+  )
+
+# ============================================================
+# STEP 1: total catch per site-year (ALL species)
+# ============================================================
+tot_site_year <- dat_sub %>%
+  count(location_id, sampling_year, name = "n_total") %>%
+  tidyr::complete(
+    location_id   = factor(sites_keep, levels = sites_keep),
+    sampling_year = factor(years_keep, levels = years_keep),
+    fill = list(n_total = 0)
+  )
+
+# ============================================================
+# STEP 2: focal counts per site-year (ONLY the two species)
+# ============================================================
+focal_site_year <- dat_sub %>%
+  filter(!is.na(species_canon)) %>%
+  count(location_id, sampling_year, fish_species = species_canon, name = "n_focal") %>%
+  tidyr::complete(
+    location_id   = factor(sites_keep, levels = sites_keep),
+    sampling_year = factor(years_keep, levels = years_keep),
+    fish_species  = factor(c("Labeobarbus altianalis", "Labeo victorianus"),
+                           levels = c("Labeobarbus altianalis", "Labeo victorianus")),
+    fill = list(n_focal = 0)
+  )
+
+# ============================================================
+# STEP 3: relative abundance (%) per site-year-species
+# ============================================================
+rel_site_year <- focal_site_year %>%
+  left_join(tot_site_year, by = c("location_id", "sampling_year")) %>%
+  mutate(
+    n_total = replace_na(n_total, 0),
+    rel_percent = if_else(n_total > 0, 100 * n_focal / n_total, 0)
+  )
+
+# ============================================================
+# STEP 4: mean ± SE across years for each site × species
+#   SE is computed across years (2021, 2022) within a site
+# ============================================================
+rel_summary <- rel_site_year %>%
+  group_by(location_id, fish_species) %>%
+  summarise(
+    n_years  = sum(!is.na(rel_percent)),                   # will be 2 after complete()
+    mean_rel = mean(rel_percent, na.rm = TRUE),
+    sd_rel   = sd(rel_percent, na.rm = TRUE),
+    se_rel   = if_else(n_years > 1, sd_rel / sqrt(n_years), 0),
+    .groups = "drop"
+  )
+
+# (Optional) diagnose “missing” error bars: show the year-level values
+# print(rel_site_year %>% filter(location_id == "M4", fish_species == "Labeobarbus altianalis"))
+
+# ============================================================
+# STEP 5: paired Wilcoxon across sites using site means (paired by site)
+# ============================================================
+rel_wide <- rel_summary %>%
+  select(location_id, fish_species, mean_rel) %>%
+  tidyr::pivot_wider(names_from = fish_species, values_from = mean_rel)
+
+wilcox_res <- wilcox.test(
+  rel_wide$`Labeo victorianus`,
+  rel_wide$`Labeobarbus altianalis`,
+  paired = TRUE,
+  exact = FALSE
+)
+
+p_label <- paste0(
+  "Paired Wilcoxon: V = ", unname(wilcox_res$statistic),
+  ", p = ", formatC(wilcox_res$p.value, format = "f", digits = 3)
+)
+
+# ============================================================
+# STEP 6: Plot (grouped bars) with black SE error bars
+# ============================================================
+pal_species <- c(
+  "Labeobarbus altianalis" = "#E41A1C",  # red
+  "Labeo victorianus"      = "#1F78B4"   # blue
+)
+
+rel_summary <- rel_summary %>%
+  mutate(fish_species = factor(fish_species,
+                               levels = c("Labeobarbus altianalis", "Labeo victorianus")))
+
+p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_species)) +
+  geom_col(
+    position = position_dodge(width = 0.72),
+    width = 0.62,
+    color = "black"
+  ) +
+  geom_errorbar(
+    aes(ymin = pmax(mean_rel - se_rel, 0), ymax = mean_rel + se_rel),
+    position = position_dodge(width = 0.72),
+    width = 0.18,
+    linewidth = 0.6,
+    color = "black"
+  ) +
+  scale_fill_manual(name = "Species", values = pal_species) +
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 80),          # <-- changed from 75 to 80
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "Mean relative abundance (%) 2021–2022 "
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 11),
+    plot.margin = margin(5.5, 18, 5.5, 5.5)
+  ) +
+  annotate(
+    "text",
+    x = Inf, y = Inf,
+    label = p_label,
+    hjust = 1.05, vjust = 1.2,
+    size = 3.8
+  )
+
+print(p_rel)
+
+# ============================================================
+# STEP 7: Save publication-quality JPEG
+# ============================================================
+dir.create("Figures", showWarnings = FALSE)
+
+ggsave(
+  filename = "Figures/RelativeAbundance_LV_vs_LA_M4-M9_2021-2022.jpg",
+  plot = p_rel,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+###########################################

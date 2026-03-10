@@ -755,14 +755,56 @@ p <- ggplot(div_site_year, aes(x = location_id, y = shannon_H)) +
 
 print(p)
 
-# ----------------------------
-# 6) OPTIONAL nonparametric alternative (simple)
-#    (Compute site means across years, then Kruskal–Wallis)
-# ----------------------------
-div_site_mean <- div_site_year %>%
-  group_by(location_id) %>%
-  summarise(shannon_mean = mean(shannon_H, na.rm = TRUE), .groups = "drop")
+#######################################
+p <- ggplot(div_site_year, aes(x = location_id, y = shannon_H)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA, color = "black") +
+  geom_point(aes(shape = sampling_year),
+             position = position_jitter(width = 0.08),
+             size = 2.6, alpha = 0.9) +
+  labs(
+    title = "",
+    x = "Sampling Site",
+    y = "Shannon–Wiener Diversity (H′)",
+    shape = "Sampling Year"
+  ) +
+  annotate(
+    "text",
+    x = -Inf, y = y_top * 1.12,
+    hjust = -0.05,
+    label = p_lab,
+    size = 4.5
+  ) +
+  expand_limits(y = y_top * 1.18) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title.x = element_text(size = 16, face = "bold", margin = margin(t = 10)),
+    axis.title.y = element_text(size = 16, face = "bold", margin = margin(r = 10)),
+    
+    axis.text.x = element_text(size = 13, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 13),
+    
+    axis.ticks = element_line(linewidth = 0.6),
+    axis.ticks.length = unit(0.2, "cm"),
+    
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 12),
+    
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
 
-kw <- kruskal.test(shannon_H ~ location_id, data = div_site_year)
-cat("\nKruskal–Wallis (ignores year structure, but useful as a check):\n")
-print(kw)
+print(p)
+# Create Figures folder if it does not exist
+dir.create("Figures", showWarnings = FALSE, recursive = TRUE)
+
+# Define file path
+fig_path <- file.path("Figures", "Shannon_Diversity_by_Site_Year.jpg")
+
+# Save figure
+ggsave(
+  filename = fig_path,
+  plot = p,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
