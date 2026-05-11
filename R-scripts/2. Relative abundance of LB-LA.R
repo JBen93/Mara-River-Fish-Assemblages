@@ -590,7 +590,7 @@ ggplot(rel_abund_all, aes(x = location_id, y = rel_percent, fill = species_label
   ) +
   scale_fill_manual(values = pal, name = "Species") +
   labs(
-    title = "Relative Abundance (2021–2022)",
+    title = "",
     x = "Sampling Site",
     y = "Relative Abundance (%)"
   ) +
