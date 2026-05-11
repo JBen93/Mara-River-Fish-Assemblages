@@ -596,10 +596,11 @@ ggplot(rel_abund_all, aes(x = location_id, y = rel_percent, fill = species_label
   ) +
   theme_minimal(base_size = 13) +
   theme(
-    plot.title    = element_text(face = "bold", hjust = 0.5),
-    plot.subtitle = element_text(hjust = 0.5),
-    axis.text.x   = element_text(size = 11),
-    legend.title  = element_text(face = "bold"),
+    plot.title        = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle     = element_text(hjust = 0.5),
+    axis.text.x       = element_text(size = 11),
+    legend.title      = element_text(face = "bold", size = 14),
+    legend.text       = element_text(face = "italic", size = 12),
     legend.key.height = unit(0.45, "cm")
   )
 ##################################################################################
