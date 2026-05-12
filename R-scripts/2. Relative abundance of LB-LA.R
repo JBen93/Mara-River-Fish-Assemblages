@@ -960,7 +960,7 @@ p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_spec
   labs(
     title = "",
     x = "Sampling Site",
-    y = "Mean relative abundance (%) 2021–2022 "
+    y = "Mean relative abundance"
   ) +
   theme_minimal(base_size = 13) +
   theme(
