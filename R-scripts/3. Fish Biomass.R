@@ -233,14 +233,14 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
     "text",
     x = min(site_stats2$site_order, na.rm = TRUE),
     y = max(site_stats2$biomass_g, na.rm = TRUE),
-    hjust = 0, vjust = 1,
+    hjust = -2, vjust = 1,
     label = paste0("R² = ", round(r2_site, 3),
                    "\np = ", format.pval(p_site, digits = 3, eps = 1e-3))
   ) +
   labs(
-    title = "2021–2022",
+    title = "",
     x = "Sampling Site",
-    y = expression("Biomass (g) = n × mean weight")
+    y = expression("Biomass (g)")
   ) +
   theme_minimal(base_size = 12) +
   theme(
