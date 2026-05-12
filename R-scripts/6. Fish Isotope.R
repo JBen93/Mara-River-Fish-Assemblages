@@ -103,35 +103,56 @@ cat("\nSpecies key:\n"); print(species_key)
 cat("\nSite key:\n");    print(site_key)
 
 # ---- Plot (ggplot): points + 40% normal ellipses, facets by site ----
-sp_cols <- c("Labeo victorianus" = "#1F78B4",      # blue
-             "Labeobarbus altianalis" = "#E41A1C") # red
+sp_cols <- c(
+  "Labeo victorianus" = "#1F78B4",
+  "Labeobarbus altianalis" = "#E41A1C"
+)
 
-df_ok <- df_ok %>% mutate(Site_code = factor(Site_code, levels = paste0("M", 4:9)))
+df_ok <- df_ok %>%
+  mutate(
+    Site_code = factor(Site_code, levels = paste0("M", 4:9))
+  )
 
 p <- ggplot(df_ok, aes(x = d13C_use, y = d15N_use, color = Fish_species)) +
+  
   geom_point(size = 2.2, alpha = 0.9) +
-  stat_ellipse(type = "norm", level = 0.40, linewidth = 0.9, linetype = "dashed") +
-  facet_wrap(~ Site_code, nrow = 2) +
-  scale_color_manual(values = sp_cols, name = "Species") +
-  labs(
-    title = expression(paste(delta^13, "C vs ", delta^15, "N by site (M4–M9)")),
-    x = expression(paste(delta^13, "C (‰)")),
-    y = expression(paste(delta^15, "N (‰)"))
+  
+  stat_ellipse(
+    type = "norm",
+    level = 0.40,
+    linewidth = 0.9,
+    linetype = "dashed"
   ) +
+  
+  facet_wrap(~ Site_code, nrow = 2) +
+  
+  scale_color_manual(
+    values = sp_cols,
+    name = "Species",
+    guide = guide_legend(
+      label.theme = element_text(face = "italic")
+    )
+  ) +
+  
+  labs(
+    title = "",
+    x = bquote(italic("\u03B4")^13 * "C (" * "\u2030" * ")"),
+    y = bquote(italic("\u03B4")^15 * "N (" * "\u2030" * ")")
+  ) +
+  
   theme_bw(base_size = 12) +
+  
   theme(
-    panel.grid      = element_blank(),
-    legend.position = "bottom",
-    legend.title    = element_text(size = 11),
-    legend.text     = element_text(size = 10),
-    plot.title      = element_text(hjust = 0.5, face = "bold"),
-    strip.background= element_rect(fill = "grey92"),
-    strip.text      = element_text(face = "bold")
+    panel.grid       = element_blank(),
+    legend.position  = "bottom",
+    legend.title     = element_text(size = 11, face = "bold"),
+    legend.text      = element_text(size = 10),
+    plot.title       = element_text(hjust = 0.5, face = "bold"),
+    strip.background = element_rect(fill = "grey92"),
+    strip.text       = element_text(face = "bold")
   )
 
 print(p)
-
-
 # ===============================================
 # Isotopic niche overlap across sites using SIBER
 # (1) maxLikOverlap (point estimate)
