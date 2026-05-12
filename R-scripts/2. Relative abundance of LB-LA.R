@@ -803,7 +803,6 @@ ggsave(
   dpi = 300
 )
 ##############################################################################
-############################################################
 # Relative abundance (%) of Labeo victorianus vs Labeobarbus altianalis
 # Sites M4–M9, Years 2021–2022
 # Mean ± SE across years (SE = SD/sqrt(n_years_with_data); SE = 0 if n=1)
@@ -927,23 +926,56 @@ p_label <- paste0(
 )
 
 # ============================================================
-# STEP 6: Plot (grouped bars) with black SE error bars
+# STEP 6: significance letters + species colors
 # ============================================================
+
 pal_species <- c(
-  "Labeobarbus altianalis" = "#E41A1C",  # red
-  "Labeo victorianus"      = "#1F78B4"   # blue
+  "Labeobarbus altianalis" = "#E41A1C",
+  "Labeo victorianus"      = "#1F78B4"
 )
 
 rel_summary <- rel_summary %>%
-  mutate(fish_species = factor(fish_species,
-                               levels = c("Labeobarbus altianalis", "Labeo victorianus")))
+  mutate(
+    fish_species = factor(
+      fish_species,
+      levels = c("Labeobarbus altianalis", "Labeo victorianus")
+    )
+  )
+
+sig_letters <- tibble(
+  location_id = factor(rep(sites_keep, each = 2), levels = sites_keep),
+  fish_species = factor(
+    rep(c("Labeobarbus altianalis", "Labeo victorianus"), times = length(sites_keep)),
+    levels = c("Labeobarbus altianalis", "Labeo victorianus")
+  ),
+  sig_letter = c(
+    "a", "b",   # M4
+    "a", "b",   # M5
+    "a", "b",   # M6
+    "a", "a",   # M7
+    "a", "a",   # M8
+    "a", "a"    # M9
+  )
+)
+
+letter_df <- rel_summary %>%
+  left_join(sig_letters, by = c("location_id", "fish_species")) %>%
+  mutate(
+    y_pos = mean_rel + se_rel + 4
+  )
+
+# ============================================================
+# STEP 7: Plot with significance letters
+# ============================================================
 
 p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_species)) +
+  
   geom_col(
     position = position_dodge(width = 0.72),
     width = 0.62,
     color = "black"
   ) +
+  
   geom_errorbar(
     aes(ymin = pmax(mean_rel - se_rel, 0), ymax = mean_rel + se_rel),
     position = position_dodge(width = 0.72),
@@ -951,45 +983,54 @@ p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_spec
     linewidth = 0.6,
     color = "black"
   ) +
+  
+  geom_text(
+    data = letter_df,
+    aes(
+      x = location_id,
+      y = y_pos,
+      label = sig_letter,
+      fill = fish_species
+    ),
+    position = position_dodge(width = 0.72),
+    size = 5,
+    fontface = "bold",
+    inherit.aes = FALSE
+  ) +
+  
   scale_fill_manual(name = "Species", values = pal_species) +
+  
   scale_y_continuous(
     labels = scales::percent_format(scale = 1),
-    limits = c(0, 80),          # <-- changed from 75 to 80
+    limits = c(0, 85),
     expand = expansion(mult = c(0, 0))
   ) +
+  
   labs(
     title = "",
     x = "Sampling Site",
     y = "Mean relative abundance"
   ) +
+  
   theme_minimal(base_size = 13) +
+  
   theme(
     axis.text.x = element_text(size = 11),
     legend.position = "right",
     legend.title = element_text(size = 12, face = "bold"),
-    legend.text = element_text(size = 11),
+    legend.text = element_text(size = 11, face = "italic"),
     plot.margin = margin(5.5, 18, 5.5, 5.5)
   ) +
+  
   annotate(
     "text",
     x = Inf, y = Inf,
     label = p_label,
-    hjust = 1.05, vjust = 1.2,
+    hjust = 1.05,
+    vjust = 1.2,
     size = 3.8
   )
 
 print(p_rel)
 
-# ============================================================
-# STEP 7: Save publication-quality JPEG
-# ============================================================
-dir.create("Figures", showWarnings = FALSE)
-
-ggsave(
-  filename = "Figures/RelativeAbundance_LV_vs_LA_M4-M9_2021-2022.jpg",
-  plot = p_rel,
-  width = 8,
-  height = 6,
-  dpi = 300
-)
 ###########################################
