@@ -245,6 +245,7 @@ palette_colors <- c(
 )
 
 # ---- Plot ----
+# ---- Plot ----
 p <- ggplot(props, aes(x = site_code, y = proportion, fill = food_type_label)) +
   geom_col(color = "black", width = 0.8) +
   facet_wrap(~ fish_species, nrow = 1, scales = "free_x") +
@@ -270,7 +271,7 @@ p <- ggplot(props, aes(x = site_code, y = proportion, fill = food_type_label)) +
     legend.text = element_text(size = 11),
     legend.title = element_text(face = "bold"),
     legend.position = "right",
-    strip.text = element_text(face = "bold", size = 12)
+    strip.text = element_text(face = "italic", size = 12)
   )
 
 print(p)
