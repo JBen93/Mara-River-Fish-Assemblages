@@ -21,9 +21,9 @@ library(ggpubr)
 library(vegan)   # PERMANOVA + betadisper
 library(broom)   # tidy model outputs
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install("phyloseq")
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+  #install.packages("BiocManager")
+#BiocManager::install("phyloseq")
 
 library(phyloseq)
 library(microeco)
@@ -235,13 +235,14 @@ p_abund_species <- t_abund1$plot_bar(
     plot.title = element_text(size = 16, face = "bold")
   ) +
   labs(
-    title = "Relative Abundance (Phylum) by Species",
+    title = "",
     y = "Relative Abundance (%)"
   )
 print(p_abund_species)
 
 # ---- Top Classes by Species + Location ----
 t_abund2 <- trans_abund$new(dataset = mecops_rarefied, taxrank = "Phylum", ntaxa = 10)
+
 p_abund_sp_loc <- t_abund2$plot_bar(
   others_color = "grey70",
   facet = c("Species", "Site"),
@@ -249,78 +250,143 @@ p_abund_sp_loc <- t_abund2$plot_bar(
   legend_text_italic = FALSE
 ) +
   theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_text(size = 12),
-    strip.text = element_text(size = 12, face = "bold"),
-    plot.title = element_text(size = 16, face = "bold")
+    axis.text.x  = element_blank(),
+    axis.text.y  = element_text(size = 12),
+    strip.text   = element_text(size = 12, face = "bold.italic"),
+    plot.title   = element_text(size = 16, face = "bold")
   ) +
   labs(
-    title = paste0("Relative Abundance (Phylum) by Species and ", loc_col),
+    title = "",
     y = "Relative Abundance (%)"
   )
+
 print(p_abund_sp_loc)
-
-
-
-
-
-
-
-
 
 # ============================================================
 # 11) ALPHA DIVERSITY (Species + Location)
-# ============================================================
-
-# ---- Alpha by Species ----
+library(dplyr)
+library(tibble)
+library(ggplot2)
 library(ggpubr)
 
-# Ensure consistent species order (optional but recommended)
-mecops_rarefied$sample_table$Species <- factor(
-  mecops_rarefied$sample_table$Species,
-  levels = c("Labeo victorianus", "Labeobarbus altianalis")
-)
+# Prepare alpha diversity data
+alpha_df <- mecops_rarefied$alpha_diversity %>%
+  rownames_to_column("SampleID") %>%
+  left_join(
+    mecops_rarefied$sample_table %>%
+      rownames_to_column("SampleID") %>%
+      select(SampleID, Species, Site),
+    by = "SampleID"
+  ) %>%
+  mutate(
+    Species = trimws(as.character(Species)),
+    Site = trimws(as.character(Site)),
+    Species = case_when(
+      Species %in% c("Labeo victorianus", "Labeo victorianus ") ~ "Labeo victorianus",
+      Species %in% c("Labeobarbus altianalis", "Labeobarbus altianalis ") ~ "Labeobarbus altianalis",
+      TRUE ~ Species
+    ),
+    Species = factor(
+      Species,
+      levels = c("Labeo victorianus", "Labeobarbus altianalis")
+    ),
+    Site = factor(Site, levels = c("M4", "M7", "M9"))
+  ) %>%
+  filter(
+    !is.na(Species),
+    !is.na(Site),
+    Site %in% c("M4", "M7", "M9")
+  )
 
-# Custom palette
+# Check whether both species are present
+print(table(alpha_df$Site, alpha_df$Species))
+
+# Colors
 sp_cols <- c(
   "Labeo victorianus"      = "blue",
   "Labeobarbus altianalis" = "red"
 )
 
-t_alpha_sp <- trans_alpha$new(dataset = mecops_rarefied, group = "Species")
-t_alpha_sp$cal_diff(method = "KW")
-t_alpha_sp$cal_diff(method = "KW_dunn")
-
-p_chao_sp <- t_alpha_sp$plot_alpha(
-  measure = "Chao1",
-  add = "jitter",
-  add_sig_text_size = 5
-) +
-  scale_color_manual(values = sp_cols, breaks = names(sp_cols)) +
-  scale_fill_manual(values  = sp_cols, breaks = names(sp_cols)) +
-  theme_pubr() +
+# Plot both species
+p_chao_sp_site <- ggplot(alpha_df, aes(x = Site, y = Chao1, fill = Species)) +
+  geom_boxplot(
+    position = position_dodge(width = 0.75),
+    width = 0.65,
+    color = "black",
+    outlier.shape = NA,
+    alpha = 0.85
+  ) +
+  geom_point(
+    aes(color = Species),
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.75
+    ),
+    size = 2.5,
+    alpha = 0.85
+  ) +
+  scale_fill_manual(values = sp_cols, name = "") +
+  scale_color_manual(values = sp_cols, name = "") +
   labs(
-    title = "Chao1 Richness by Species",
+    title = "",
+    x = "Site",
     y = "Chao1"
+  ) +
+  theme_classic(base_size = 16) +
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 14, face = "italic"),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16)
   )
 
-print(p_chao_sp)
+print(p_chao_sp_site)
 
-
-p_pielou_sp <- t_alpha_sp$plot_alpha(
-  measure = "Pielou",
-  add = "jitter",
-  add_sig_text_size = 5
-) +
-  theme_pubr() +
+####significant 
+p_chao_sp_site <- ggplot(alpha_df, aes(x = Site, y = Chao1, fill = Species)) +
+  geom_boxplot(
+    position = position_dodge(width = 0.75),
+    width = 0.65,
+    color = "black",
+    outlier.shape = NA,
+    alpha = 0.85
+  ) +
+  geom_point(
+    aes(color = Species),
+    position = position_jitterdodge(
+      jitter.width = 0.15,
+      dodge.width = 0.75
+    ),
+    size = 2.5,
+    alpha = 0.85
+  ) +
+  stat_compare_means(
+    aes(group = Species),
+    method = "wilcox.test",
+    label = "p.signif",
+    hide.ns = FALSE,
+    size = 5
+  ) +
+  scale_fill_manual(values = sp_cols, name = "") +
+  scale_color_manual(values = sp_cols, name = "") +
   labs(
-    title = "Pielou Evenness by Species",
-    y = "Pielou"
+    title = "",
+    x = "Site",
+    y = "Chao1 Richness"
+  ) +
+  theme_classic(base_size = 16) +
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 14, face = "italic"),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16)
   )
-print(p_pielou_sp)
 
-
-
+print(p_chao_sp_site)
 # ---- Alpha by Site ----
 t_alpha_loc <- trans_alpha$new(dataset = mecops_rarefied, group = "Site")
 t_alpha_loc$cal_diff(method = "KW")
@@ -463,10 +529,7 @@ t_diff_sp$plot_diff_bar(threshold = 3.0) +
 # ReRun_2026 (taxa+counts) + RR_26_Metadata (sample metadata)
 # -> phyloseq -> microeco pipeline (same downstream objects as your old script)
 # ===============================
-remove(list = ls())
 
-# Setup renv (optional)
-renv::restore()
 # ---- libraries ----
 library(dplyr)
 library(tidyr)
@@ -1227,3 +1290,4 @@ t_diff_sp <- trans_diff$new(
 t_diff_sp$plot_diff_bar(threshold = 3.0) +
   ggtitle("LEfSe Differential Taxa by Species")
 #change the threshold to increase significance
+
