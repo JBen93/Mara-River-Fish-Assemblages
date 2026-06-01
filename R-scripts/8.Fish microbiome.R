@@ -20,6 +20,7 @@ library(ggpubr)
 
 library(vegan)   # PERMANOVA + betadisper
 library(broom)   # tidy model outputs
+library(rcompanion)
 
 #if (!requireNamespace("BiocManager", quietly = TRUE))
   #install.packages("BiocManager")
@@ -232,7 +233,7 @@ p_abund_species <- t_abund1$plot_bar(
     axis.text.x = element_blank(),
     axis.text.y = element_text(size = 12),
     strip.text = element_text(size = 14, face = "bold"),
-    plot.title = element_text(size = 16, face = "bold")
+    plot.title = element_text(size = 16, face = "bold.italic")
   ) +
   labs(
     title = "",
@@ -252,8 +253,8 @@ p_abund_sp_loc <- t_abund2$plot_bar(
   theme(
     axis.text.x  = element_blank(),
     axis.text.y  = element_text(size = 12),
-    strip.text   = element_text(size = 12, face = "bold.italic"),
-    plot.title   = element_text(size = 16, face = "bold")
+    strip.text   = element_text(size = 12, face = "bold"),
+    plot.title   = element_text(size = 16, face = "bold.italic")
   ) +
   labs(
     title = "",
@@ -261,6 +262,7 @@ p_abund_sp_loc <- t_abund2$plot_bar(
   )
 
 print(p_abund_sp_loc)
+
 
 # ============================================================
 # 11) ALPHA DIVERSITY (Species + Location)
@@ -387,10 +389,7 @@ p_chao_sp_site <- ggplot(alpha_df, aes(x = Site, y = Chao1, fill = Species)) +
   )
 
 print(p_chao_sp_site)
-# ---- Alpha by Site ----
-t_alpha_loc <- trans_alpha$new(dataset = mecops_rarefied, group = "Site")
-t_alpha_loc$cal_diff(method = "KW")
-t_alpha_loc$cal_diff(method = "KW_dunn")
+
 
 p_chao_loc <- t_alpha_loc$plot_alpha(
   measure = "Chao1",
@@ -420,12 +419,38 @@ p_chao_loc <- t_alpha_loc$plot_alpha(
 print(p_chao_loc)
 
 # Alpha diversity by Site
+# Alpha diversity by Site
 t_alpha_loc <- trans_alpha$new(dataset = mecops_rarefied, group = "Site")
 
-# Run tests (Kruskal–Wallis + Dunn post hoc)
+# Run tests
 t_alpha_loc$cal_diff(method = "KW")
-t_alpha_loc$cal_diff(method = "KW_dunn")
+kw_results <- t_alpha_loc$res_diff
 
+t_alpha_loc$cal_diff(method = "KW_dunn")
+dunn_results <- t_alpha_loc$res_diff
+
+# View Kruskal-Wallis results
+kw_results
+
+# View Dunn post hoc results
+dunn_results
+
+kw_chao <- kw_results[kw_results$Measure == "Chao1", ]
+
+kw_chao
+
+
+dunn_chao <- dunn_results[dunn_results$Measure == "Chao1", ]
+
+dunn_chao
+kruskal.test(Chao1 ~ Site, data = alpha_df)
+wilcox.test(Chao1 ~ Species,
+            data = subset(alpha_df, Site == "M4"))
+wilcox.test(Chao1 ~ Species,
+            data = subset(alpha_df, Site == "M7"))
+
+wilcox.test(Chao1 ~ Species,
+            data = subset(alpha_df, Site == "M9"))
 # Plot with significance labels
 p_chao_loc <- t_alpha_loc$plot_alpha(
   measure = "Chao1",
