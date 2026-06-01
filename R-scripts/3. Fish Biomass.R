@@ -233,9 +233,14 @@ ggplot(site_stats2, aes(x = site_order, y = biomass_g)) +
     "text",
     x = min(site_stats2$site_order, na.rm = TRUE),
     y = max(site_stats2$biomass_g, na.rm = TRUE),
-    hjust = -2, vjust = 1,
-    label = paste0("R² = ", round(r2_site, 3),
-                   "\np = ", format.pval(p_site, digits = 3, eps = 1e-3))
+    hjust = -1,
+    vjust = 1,
+    label = paste0(
+      "R² = ", sprintf("%.3f", r2_site),
+      "\np ", ifelse(p_site < 0.001,
+                     "< 0.001",
+                     paste0("= ", sprintf("%.3f", p_site)))
+    )
   ) +
   labs(
     title = "",
