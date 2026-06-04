@@ -1670,3 +1670,6 @@ p_diff_bact_species <- t_diff_bact_species$plot_diff_bar(
   ggtitle("Differential bacterial species between fish species")
 
 print(p_diff_bact_species)
+head(t_diff_bact_species$res_diff)
+
+summary(t_diff_bact_species$res_diff)

@@ -891,7 +891,12 @@ p_lab_lmer <- ifelse(is.na(p_lmer),
 
 y_annot <- max(summary_mean_se_plot$mean_biomass + summary_mean_se_plot$se_biomass, na.rm = TRUE) * 1.10
 
-p_mean_se <- ggplot(summary_mean_se_plot, aes(x = location_id, y = mean_biomass, fill = fish_species)) +
+library(ggtext)
+
+p_mean_se <- ggplot(
+  summary_mean_se_plot,
+  aes(x = location_id, y = mean_biomass, fill = fish_species)
+) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, color = "black") +
   geom_errorbar(
     aes(
@@ -901,29 +906,33 @@ p_mean_se <- ggplot(summary_mean_se_plot, aes(x = location_id, y = mean_biomass,
     width = 0.22,
     position = position_dodge(width = 0.7)
   ) +
-  scale_fill_manual(values = pal_species, breaks = species_order_means) +
+  scale_fill_manual(
+    values = pal_species,
+    breaks = species_order_means,
+    labels = paste0("<i>", species_order_means, "</i>")
+  ) +
   labs(
     title = "",
     x = "Site",
-    y = "Mean Biomass (g) 2021-2022",
+    y = "Mean Biomass (g)",
     fill = "Species"
   ) +
-  annotate("text", x = Inf, y = y_annot, label = p_lab_lmer,
-           hjust = 1.05, vjust = 0, size = 4.2) +
+  annotate(
+    "text",
+    x = Inf,
+    y = y_annot,
+    label = p_lab_lmer,
+    hjust = 1.05,
+    vjust = 0,
+    size = 4.2
+  ) +
   coord_cartesian(clip = "off") +
   theme_minimal(base_size = 13) +
   theme(
     plot.title = element_text(hjust = 0.5),
+    legend.text = element_markdown(),
     plot.margin = margin(10, 25, 10, 10)
   )
 
 print(p_mean_se)
-
-# =====================================================================
-# 5) OPTIONAL: print model outputs for reporting
-# =====================================================================
-print(summary(mod_lmer))
-print(anova_lmer)
-
-cat("\nMixed-effects model p-value (fish_species):", p_lmer, "\n")
-cat("Paired Wilcoxon p-value (site means):", wilc_paired, "\n")
+#############################################################
