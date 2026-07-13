@@ -1034,3 +1034,4 @@ p_rel <- ggplot(rel_summary, aes(x = location_id, y = mean_rel, fill = fish_spec
 print(p_rel)
 
 ###########################################
+

@@ -720,12 +720,82 @@ ggplot(summary_mean_se, aes(x = location_id, y = mean_biomass, fill = fish_speci
   labs(
     title = "",
     x = "Site",
-    y = "Mean Biomass (g) 2021–2022",
+    y = "Mean Biomass (g)",
     fill = "Species"
   ) +
   theme_minimal(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5))
 
+#####
+ggplot(summary_mean_se,
+       aes(x = location_id, y = mean_biomass, fill = fish_species)) +
+  
+  geom_col(position = position_dodge(width = 0.7),
+           width = 0.6,
+           color = "black") +
+  
+  geom_errorbar(
+    aes(ymin = pmax(mean_biomass - se_biomass, 0),
+        ymax = mean_biomass + se_biomass),
+    width = 0.22,
+    position = position_dodge(width = 0.7)
+  ) +
+  
+  scale_fill_manual(
+    values = pal_species,
+    breaks = species_order,
+    labels = c(
+      expression(italic("Labeo victorianus")),
+      expression(italic("Labeobarbus altianalis"))
+    )
+  ) +
+  
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = "LMM: italic(p) == 0.0213",
+    parse = TRUE,
+    hjust = 1.05,
+    vjust = 1.5,
+    size = 5
+  ) +
+  
+  labs(
+    x = "Site",
+    y = "Mean Biomass (g)",
+    fill = "Species"
+  ) +
+  
+  theme_minimal(base_size = 13) +
+  
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    axis.title = element_text(size = 15),
+    axis.text = element_text(size = 13)
+  )
+geom_text(
+  data = letters_df,
+  aes(x = location_id,
+      y = y,
+      label = letters),
+  inherit.aes = FALSE,
+  size = 5,
+  fontface = "bold"
+) +
+  
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = "italic(p)==0.0213",
+    parse = TRUE,
+    hjust = 1.1,
+    vjust = 1.5,
+    size = 5
+  ) +
 #####################################################################
 # Biomass comparison for LB and LV across Mara River sites (2021–2022)
 # -------------------------------------------------------------------
@@ -936,3 +1006,4 @@ p_mean_se <- ggplot(
 
 print(p_mean_se)
 #############################################################
+
